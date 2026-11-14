@@ -2,631 +2,294 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
-<title>Solar Buchführung</title>
-<meta name="claude:viewport-fit-sides" content="cover">
-<style>
-  :root {
-    --bg: #f2f2f7;
-    --card: #ffffff;
-    --text: #000000;
-    --muted: #6e6e73;
-    --line: rgba(60, 60, 67, .18);
-    --field: rgba(118, 118, 128, .12);
-    --accent: #007aff;
-    --red: #d70015;
-    --green: #1f8a3b;
-    --bar: rgba(255, 255, 255, .72);
-    --bar-border: rgba(255, 255, 255, .6);
-    --shadow: 0 8px 30px rgba(0, 0, 0, .14);
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #000000;
-      --card: #1c1c1e;
-      --text: #ffffff;
-      --muted: #98989f;
-      --line: rgba(84, 84, 88, .6);
-      --field: rgba(118, 118, 128, .24);
-      --accent: #0a84ff;
-      --red: #ff453a;
-      --green: #30d158;
-      --bar: rgba(40, 40, 42, .72);
-      --bar-border: rgba(255, 255, 255, .12);
-      --shadow: 0 8px 30px rgba(0, 0, 0, .5);
-      color-scheme: dark;
-    }
-  }
-  :root[data-theme="dark"] {
-    --bg: #000000;
-    --card: #1c1c1e;
-    --text: #ffffff;
-    --muted: #98989f;
-    --line: rgba(84, 84, 88, .6);
-    --field: rgba(118, 118, 128, .24);
-    --accent: #0a84ff;
-    --red: #ff453a;
-    --green: #30d158;
-    --bar: rgba(40, 40, 42, .72);
-    --bar-border: rgba(255, 255, 255, .12);
-    --shadow: 0 8px 30px rgba(0, 0, 0, .5);
-    color-scheme: dark;
-  }
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html { padding-top: env(safe-area-inset-top, 0px); }
-  html, body { margin: 0; height: 100%; }
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font: 17px/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
-  }
-  button, input { font: inherit; color: inherit; }
-  button { cursor: pointer; border: 0; background: none; padding: 0; }
-
-  .view {
-    display: none;
-    max-width: 560px;
-    margin: 0 auto;
-    padding-block: 20px calc(env(safe-area-inset-bottom, 0px) + 120px);
-    padding-left: max(16px, env(safe-area-inset-left, 0px));
-    padding-right: max(16px, env(safe-area-inset-right, 0px));
-  }
-  .view.active { display: block; }
-  .head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 0 4px 16px; }
-  .head h1 { min-width: 0; overflow-wrap: anywhere; }
-  .head-btns { display: flex; gap: 10px; flex: none; }
-  .gear { width: 36px; height: 36px; border-radius: 50%; background: var(--field); color: var(--accent); display: grid; place-items: center; }
-  .gear svg { width: 22px; height: 22px; }
-  h1 { font-size: 34px; line-height: 1.1; font-weight: 700; letter-spacing: -.02em; margin: 0; }
-  .add {
-    width: 36px; height: 36px; border-radius: 50%;
-    background: var(--accent); color: #fff;
-    display: grid; place-items: center;
-  }
-  .add svg { width: 18px; height: 18px; }
-
-  .empty { text-align: center; color: var(--muted); padding: 64px 24px; }
-  .empty svg { width: 56px; height: 56px; opacity: .5; margin-bottom: 12px; }
-  .empty b { display: block; color: var(--text); font-size: 20px; margin-bottom: 4px; }
-
-  /* Übersicht */
-  .summary { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
-  .sum { background: var(--card); border-radius: 16px; padding: 14px 16px; min-width: 0; }
-  .sum .label { font-size: 13px; color: var(--muted); }
-  .sum .money { font-size: 24px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; margin-top: 2px; overflow-wrap: anywhere; }
-  .sum .panels { font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .sum.owe .money { color: var(--red); }
-  .sum.get .money { color: var(--green); }
-
-  .section { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .02em; margin: 0 16px 6px; }
-  .list { display: grid; gap: 12px; }
-  .entry { background: var(--card); border-radius: 16px; padding: 14px 16px; }
-  .entry.done { opacity: .5; }
-  .entry-top { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
-  .entry .person { font-weight: 600; overflow-wrap: anywhere; min-width: 0; }
-  .entry .total { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .entry.owe .total { color: var(--red); }
-  .entry.get .total { color: var(--green); }
-  .entry .dir { font-size: 15px; color: var(--muted); margin-top: 2px; }
-  .rows { margin-top: 10px; border-top: .5px solid var(--line); padding-top: 8px; font-size: 15px; display: grid; gap: 4px; }
-  .rows div { display: flex; justify-content: space-between; gap: 12px; }
-  .rows span:first-child { color: var(--muted); overflow-wrap: anywhere; min-width: 0; }
-  .rows span:last-child { font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .actions { display: flex; gap: 20px; margin-top: 10px; font-size: 15px; }
-  .actions button { color: var(--accent); padding: 6px 0; }
-  .actions .del { color: var(--red); margin-left: auto; }
-
-  /* Stempelkarte */
-  [hidden] { display: none !important; }
-  .stamp { background: var(--card); border-radius: 16px; padding: 16px; }
-  .stamp-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
-  .stamp-head b { font-size: 20px; }
-  .stamp-head span { color: var(--muted); font-size: 15px; font-variant-numeric: tabular-nums; }
-  .stamps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 16px 0; }
-  .stamps div {
-    aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center;
-    border: 2px dashed var(--line); color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums;
-  }
-  .stamps div.on { border: 0; background: var(--accent); color: #fff; }
-  .stamps svg { width: 55%; height: 55%; }
-  .stamp-info { margin: 0 0 16px; color: var(--muted); font-size: 15px; }
-  .stamp-actions { display: grid; gap: 8px; }
-  .primary, .secondary { width: 100%; min-height: 50px; border-radius: 14px; font-weight: 600; padding: 0 16px; }
-  .primary { background: var(--accent); color: #fff; }
-  .secondary { background: var(--field); color: var(--accent); }
-  .link { color: var(--accent); font-size: 15px; padding: 8px; justify-self: center; }
-  .timer { border-top: .5px solid var(--line); padding-top: 14px; margin-bottom: 10px; text-align: center; }
-  .timer-label { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .02em; }
-  .time { font-size: 52px; line-height: 1.15; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-  .timer.over .time { color: var(--red); }
-  .bar { height: 6px; border-radius: 3px; background: var(--field); overflow: hidden; margin-top: 8px; }
-  .bar i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 3px; }
-  .timer.over .bar i { background: var(--red); }
-
-  /* Tab-Leiste */
-  .tabbar {
-    position: fixed; left: 50%; transform: translateX(-50%);
-    bottom: calc(env(safe-area-inset-bottom) + 14px);
-    display: flex; gap: 4px; padding: 5px;
-    border-radius: 999px;
-    background: var(--bar);
-    border: .5px solid var(--bar-border);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    backdrop-filter: blur(24px) saturate(180%);
-    box-shadow: var(--shadow);
-    z-index: 10;
-  }
-  .tab {
-    width: 96px; height: 54px; border-radius: 999px;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
-    font-size: 10px; font-weight: 600; color: var(--text);
-    transition: background .2s, color .2s;
-  }
-  .tab svg { width: 26px; height: 26px; flex: none; }
-  .tab span { max-width: 88px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tab.active { background: var(--field); color: var(--accent); }
-
-  /* Eingabe-Sheet */
-  .backdrop {
-    position: fixed; inset: 0; background: rgba(0, 0, 0, .4);
-    opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 20;
-  }
-  .sheet {
-    position: fixed; left: 0; right: 0; bottom: 0; z-index: 21;
-    max-width: 560px; margin: 0 auto; max-height: 92dvh; overflow-y: auto;
-    background: var(--bg); border-radius: 20px 20px 0 0;
-    padding: 0 16px calc(env(safe-area-inset-bottom) + 20px);
-    transform: translateY(105%); transition: transform .3s cubic-bezier(.2, .8, .2, 1);
-  }
-  body.sheet-open .backdrop { opacity: 1; pointer-events: auto; }
-  .sheet.open { transform: none; }
-  .sheet-head {
-    position: sticky; top: 0; background: var(--bg); z-index: 1;
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 16px 4px 12px; margin-bottom: 4px;
-  }
-  .sheet-head b { font-size: 17px; }
-  .sheet-head button { color: var(--accent); }
-  .sheet-head .save { font-weight: 600; }
-
-  .seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--field); border-radius: 10px; padding: 2px; margin-bottom: 20px; }
-  .seg button { padding: 7px 4px; border-radius: 8px; font-size: 14px; font-weight: 500; }
-  .seg button.on { background: var(--card); box-shadow: 0 1px 4px rgba(0, 0, 0, .15); font-weight: 600; }
-
-  .group { background: var(--card); border-radius: 12px; margin-bottom: 20px; overflow: hidden; }
-  .field { display: flex; align-items: center; gap: 12px; padding: 0 16px; min-height: 46px; }
-  .field + .field { border-top: .5px solid var(--line); }
-  .field label { flex: none; color: var(--text); }
-  .field input {
-    flex: 1; min-width: 0; border: 0; background: none; outline: none;
-    padding: 11px 0; text-align: right;
-  }
-  .field input.name { text-align: left; font-weight: 600; }
-  .field input::placeholder { color: var(--muted); font-weight: 400; }
-  .field .unit { color: var(--muted); flex: none; }
-  .hint { font-size: 13px; color: var(--muted); margin: -14px 16px 20px; }
-  .sheet-total { display: flex; justify-content: space-between; font-size: 20px; font-weight: 700; margin: 0 16px; font-variant-numeric: tabular-nums; }
-  .sheet .section { margin-top: 4px; }
-  .icons { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; padding: 10px 12px; border-top: .5px solid var(--line); }
-  .icons button { aspect-ratio: 1; border-radius: 10px; display: grid; place-items: center; color: var(--muted); }
-  .icons button svg { width: 24px; height: 24px; }
-  .icons button.on { background: var(--accent); color: #fff; }
-  .reset { width: 100%; min-height: 46px; color: var(--red); }
-  @media (max-width: 380px) { .icons { grid-template-columns: repeat(6, 1fr); } }
-</style>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>body{margin:0}[hidden]{display:none!important}</style>
 </head>
 <body>
+<title>MacPunkte</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: eine schmale Spalte. Oben die Stempelkarte als Objekt (Kartenpapier, gestanzte Felder),
+   darunter die Ausleihe als ruhige Zeitanzeige. */
+:root {
+  --bg: #e6eaf1;
+  --card: #f8fafc;
+  --line: #c3cbdb;
+  --fg: #1a2238;
+  --muted: #56617c;
+  --ink: #2743c9;        /* Stempelfarbe */
+  --ink-soft: #2743c91f;
+  --on-ink: #ffffff;
+  --go: #17794a;
+  --late: #b3261e;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
+  --body: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10131c; --card: #1a1f2e; --line: #343c52; --fg: #e9ecf6; --muted: #9aa4bf;
+    --ink: #8fa4ff; --ink-soft: #8fa4ff24; --on-ink: #0d1330; --go: #5fd39a; --late: #ff8a80;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10131c; --card: #1a1f2e; --line: #343c52; --fg: #e9ecf6; --muted: #9aa4bf;
+  --ink: #8fa4ff; --ink-soft: #8fa4ff24; --on-ink: #0d1330; --go: #5fd39a; --late: #ff8a80;
+  color-scheme: dark;
+}
 
-<main id="view-work" class="view active">
-  <div class="head">
-    <h1 data-t="workName"></h1>
-    <div class="head-btns"><button class="gear" aria-label="Einstellungen"></button></div>
-  </div>
-  <section class="stamp">
-    <div class="stamp-head"><b>MacPunkte</b><span id="mac-count"></span></div>
-    <div class="stamps" id="mac-stamps"></div>
-    <div class="timer" id="mac-timer" hidden>
-      <div class="timer-label">MacBook ausgeliehen</div>
-      <div class="time" id="mac-time"></div>
-      <div class="bar"><i id="mac-bar"></i></div>
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font: 400 16px/1.5 var(--body);
+  padding-block: 28px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.app { max-width: 30rem; margin-inline: auto; display: flex; flex-direction: column; gap: 20px; }
+
+header { display: flex; flex-direction: column; gap: 2px; }
+h1 { font: 800 2.5rem/1 var(--display); letter-spacing: -0.02em; margin: 0; }
+h1 span { color: var(--ink); }
+.sub { color: var(--muted); margin: 0; }
+
+/* Stempelkarte */
+.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  padding: 18px; display: flex; flex-direction: column; gap: 16px;
+}
+.card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.label { font: 600 0.72rem/1.2 var(--body); letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+.count { font: 700 0.95rem/1.2 var(--mono); font-variant-numeric: tabular-nums; }
+.slots { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; list-style: none; margin: 0; padding: 0; }
+.slot {
+  aspect-ratio: 1; max-width: 100%; border-radius: 50%;
+  border: 2px dashed var(--line); color: var(--muted);
+  display: grid; place-items: center; font: 500 1rem var(--mono);
+}
+.slot.on {
+  border: 3px double var(--ink); color: var(--ink); background: var(--ink-soft);
+  transform: rotate(var(--r, 0deg));
+}
+.slot.on svg { width: 52%; height: 52%; }
+.slot.fresh { animation: thump .32s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes thump { from { transform: rotate(var(--r, 0deg)) scale(1.7); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .slot.fresh { animation: none; } }
+.card-foot { border-top: 1px dashed var(--line); padding-top: 12px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; color: var(--muted); font-size: 0.9rem; }
+
+/* Knöpfe */
+.actions { display: flex; flex-direction: column; gap: 10px; }
+button {
+  font: 600 1rem/1.2 var(--body); border-radius: 10px; padding: 14px 18px; cursor: pointer;
+  border: 1px solid var(--line); background: transparent; color: var(--fg);
+}
+button.primary { background: var(--ink); border-color: var(--ink); color: var(--on-ink); }
+button.quiet { padding: 8px 10px; border: 0; color: var(--muted); font-weight: 500; font-size: 0.9rem; text-decoration: underline; text-underline-offset: 3px; align-self: center; }
+button.danger { border-color: var(--late); color: var(--late); }
+button:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; }
+.row > button { flex: 1 1 8rem; }
+
+/* Ausleihe */
+.loan { display: flex; flex-direction: column; gap: 10px; }
+.loan-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pill { font: 600 0.78rem/1 var(--body); padding: 5px 9px; border-radius: 99px; border: 1px solid currentColor; }
+.pill.idle { color: var(--muted); } .pill.run { color: var(--go); } .pill.over { color: var(--late); }
+.clock { font: 700 clamp(2.6rem, 15vw, 4.2rem)/1 var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+.clock.over { color: var(--late); }
+.bar { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--go); border-radius: 99px; }
+.note { color: var(--muted); margin: 0; font-size: 0.95rem; }
+.sync { color: var(--muted); font-size: 0.8rem; text-align: center; margin: 0; }
+</style>
+
+<div class="app">
+  <header>
+    <h1>Mac<span>Punkte</span></h1>
+    <p class="sub">5 Stempel sammeln, dann 24 Stunden MacBook ausleihen.</p>
+  </header>
+
+  <section class="card" aria-labelledby="card-label">
+    <div class="card-head">
+      <span class="label" id="card-label">Stempelkarte</span>
+      <span class="count" id="count" aria-live="polite"></span>
     </div>
-    <p class="stamp-info" id="mac-info"></p>
-    <div class="stamp-actions">
-      <button class="primary" id="mac-loan" hidden>MacBook für 24 Stunden ausleihen</button>
-      <button class="primary" id="mac-add">Stempel hinzufügen</button>
-      <button class="secondary" id="mac-return" hidden>MacBook zurückgegeben</button>
-      <button class="link" id="mac-undo">Letzten Stempel entfernen</button>
+    <ol class="slots" id="slots"></ol>
+    <div class="card-foot">
+      <span id="hint"></span>
+      <span id="redeemed"></span>
     </div>
   </section>
-</main>
 
-<main id="view-books" class="view">
-  <div class="head">
-    <h1 data-t="booksName"></h1>
-    <div class="head-btns">
-      <button class="gear" aria-label="Einstellungen"></button>
-      <button class="add" id="add" aria-label="Neuer Eintrag">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-      </button>
+  <div class="actions">
+    <button class="primary" id="btn-stamp" type="button">Stempel eintragen</button>
+    <button class="primary" id="btn-redeem" type="button" hidden>MacBook für 24 h ausleihen</button>
+    <button class="quiet" id="btn-undo" type="button">Letzten Stempel entfernen</button>
+  </div>
+
+  <section class="card loan" aria-labelledby="loan-label">
+    <div class="loan-head">
+      <span class="label" id="loan-label">Ausleihe</span>
+      <span class="pill idle" id="pill">Nicht aktiv</span>
     </div>
-  </div>
-
-  <div class="summary">
-    <div class="sum owe">
-      <div class="label" data-t="owe"></div>
-      <div class="money" id="sum-owe-money"></div>
-      <div class="panels" id="sum-owe-panels"></div>
+    <div class="clock" id="clock" role="timer">24:00:00</div>
+    <div class="bar" id="bar" hidden><i id="bar-fill"></i></div>
+    <p class="note" id="loan-note"></p>
+    <button id="btn-return" type="button" hidden>MacBook zurückgegeben</button>
+    <div class="row" id="confirm" hidden>
+      <button class="danger" id="btn-confirm" type="button">Ja, Ausleihe beenden</button>
+      <button id="btn-cancel" type="button">Weiter ausleihen</button>
     </div>
-    <div class="sum get">
-      <div class="label" data-t="get"></div>
-      <div class="money" id="sum-get-money"></div>
-      <div class="panels" id="sum-get-panels"></div>
-    </div>
-  </div>
+  </section>
 
-  <div id="list"></div>
-</main>
-
-<nav class="tabbar">
-  <button class="tab active" data-view="work"></button>
-  <button class="tab" data-view="books"></button>
-</nav>
-
-<div class="backdrop" id="backdrop"></div>
-
-<form class="sheet" id="sheet" autocomplete="off" novalidate>
-  <div class="sheet-head">
-    <button type="button" id="cancel">Abbrechen</button>
-    <b id="sheet-title">Neuer Eintrag</b>
-    <button type="submit" class="save">Sichern</button>
-  </div>
-
-  <div class="seg" id="seg">
-    <button type="button" data-dir="owe" data-t="owe"></button>
-    <button type="button" data-dir="get" data-t="get"></button>
-  </div>
-
-  <div class="group">
-    <div class="field"><label for="f-person">Person</label><input id="f-person" placeholder="Name" enterkeyhint="next"></div>
-  </div>
-
-  <div class="group">
-    <div class="field"><input class="name" id="f-fixname" placeholder="Eigener Name" aria-label="Name der ersten Position"></div>
-    <div class="field"><label for="f-fixqty" data-t="unitN"></label><input id="f-fixqty" inputmode="numeric" placeholder="0"></div>
-    <div class="field"><label for="f-fixprice" class="l-price"></label><input id="f-fixprice" inputmode="decimal" placeholder="0"><span class="unit">€</span></div>
-  </div>
-
-  <div class="group">
-    <div class="field"><input class="name" id="f-ppname" placeholder="Eigener Name" aria-label="Name der zweiten Position"></div>
-    <div class="field"><label for="f-panels" data-t="unitN"></label><input id="f-panels" inputmode="numeric" placeholder="0"></div>
-    <div class="field"><label for="f-ppprice" class="l-price"></label><input id="f-ppprice" inputmode="decimal" placeholder="0"><span class="unit">€</span></div>
-  </div>
-
-  <div class="sheet-total"><span>Gesamt</span><span id="f-total"></span></div>
-</form>
-
-<form class="sheet" id="settings" autocomplete="off" novalidate>
-  <div class="sheet-head">
-    <span></span>
-    <b>Einstellungen</b>
-    <button type="submit" class="save">Fertig</button>
-  </div>
-
-  <div class="section">Erster Bereich</div>
-  <div class="group">
-    <div class="field"><label for="s-workName">Name</label><input id="s-workName" data-s="workName"></div>
-    <div class="icons" data-icon="workIcon"></div>
-  </div>
-
-  <div class="section">Zweiter Bereich</div>
-  <div class="group">
-    <div class="field"><label for="s-booksName">Name</label><input id="s-booksName" data-s="booksName"></div>
-    <div class="icons" data-icon="booksIcon"></div>
-  </div>
-
-  <div class="section">Bezeichnungen</div>
-  <div class="group">
-    <div class="field"><label for="s-owe">Ich schulde</label><input id="s-owe" data-s="owe"></div>
-    <div class="field"><label for="s-get">Mir wird geschuldet</label><input id="s-get" data-s="get"></div>
-    <div class="field"><label for="s-unit1">Einheit (Einzahl)</label><input id="s-unit1" data-s="unit1"></div>
-    <div class="field"><label for="s-unitN">Einheit (Mehrzahl)</label><input id="s-unitN" data-s="unitN"></div>
-  </div>
-
-  <div class="section">Vorgaben für neue Einträge</div>
-  <div class="group">
-    <div class="field"><label for="s-fixName">Name Position 1</label><input id="s-fixName" data-s="fixName" placeholder="Eigener Name"></div>
-    <div class="field"><label for="s-fixPrice" class="l-price"></label><input id="s-fixPrice" data-s="fixPrice" inputmode="decimal"><span class="unit">€</span></div>
-    <div class="field"><label for="s-ppName">Name Position 2</label><input id="s-ppName" data-s="ppName" placeholder="Eigener Name"></div>
-    <div class="field"><label for="s-ppPrice" class="l-price"></label><input id="s-ppPrice" data-s="ppPrice" inputmode="decimal"><span class="unit">€</span></div>
-  </div>
-  <div class="hint">Bestehende Einträge behalten ihre Namen und Preise.</div>
-
-  <div class="group"><button type="button" class="reset" id="reset">Alles auf Standard zurücksetzen</button></div>
-</form>
+  <p class="sync" id="sync"></p>
+</div>
 
 <script>
-(() => {
-  const KEY = 'solar.buchfuehrung.v1';
-  const SET_KEY = 'solar.settings.v1';
-  const $ = id => document.getElementById(id);
-  const $$ = sel => document.querySelectorAll(sel);
-  const eur = n => n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
-  const num = s => { const n = parseFloat(String(s).replace(/\s/g, '').replace(',', '.')); return isFinite(n) && n > 0 ? n : 0; };
-  const fmt = n => String(n).replace('.', ',');
-  /* Alte Einträge ohne fixQty hatten einen einmaligen Festpreis. */
-  const q1 = e => e.fixQty == null ? 1 : e.fixQty;
-  const count = e => (e.fixQty || 0) + e.panels;
-  const total = e => q1(e) * e.fixPrice + e.panels * e.ppPrice;
+(function () {
+  var GOAL = 5, LOAN_MS = 24 * 60 * 60 * 1000, KEY = "macpunkte-v1";
+  var TILT = [-8, 5, -3, 9, -6];
+  var ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="5" width="14" height="10" rx="1.5"/><path d="M2.5 19h19"/></svg>';
 
-  const read = (k, fallback) => { try { return JSON.parse(localStorage.getItem(k)) || fallback; } catch { return fallback; } };
-  const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+  var state = { stamps: 0, loanEnd: null, redeemed: 0 };
+  var fresh = -1, confirming = false, docRef = null, queue = Promise.resolve();
+  var $ = function (id) { return document.getElementById(id); };
 
-  const ICONS = {
-    laptop: '<rect x="4" y="5" width="16" height="11" rx="2"/><path d="M2 19.5h20"/>',
-    euro: '<path d="M17.5 6.2A7 7 0 1 0 17.5 17.8"/><path d="M4 10h9M4 14h9"/>',
-    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/>',
-    panel: '<path d="M5 5h14l2.5 11h-19z"/><path d="M12 5v11M3.8 10.5h16.4M9 20h6M12 16v4"/>',
-    bolt: '<path d="M13 2 5 13.5h6L10 22l9-12h-6.5z"/>',
-    home: '<path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V20h13V9.5"/>',
-    wrench: '<path d="M15 5.5a4.5 4.5 0 0 0-5.6 5.6L4 16.5a2.1 2.1 0 0 0 3 3l5.4-5.4A4.5 4.5 0 0 0 18.5 9l-3 3-2.5-.5-.5-2.5z"/>',
-    truck: '<path d="M2.5 6.5h11v10h-11zM13.5 10h4l3 3.5v3h-7"/><circle cx="7" cy="17.5" r="2" fill="var(--card)"/><circle cx="17" cy="17.5" r="2" fill="var(--card)"/>',
-    user: '<circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/>',
-    users: '<circle cx="9" cy="8.5" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 5.2a3.5 3.5 0 0 1 0 6.6M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/>',
-    list: '<path d="M9 6.5h11M9 12h11M9 17.5h11M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01"/>',
-    clipboard: '<rect x="5" y="4.5" width="14" height="16.5" rx="2.5"/><path d="M9 3h6v3H9zM9 11h6M9 15h4"/>',
-    calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
-    chart: '<path d="M4 20V4M4 20h16M8.5 16v-5M13 16V8M17.5 16v-3"/>',
-    wallet: '<rect x="3.5" y="6" width="17" height="13.5" rx="2.5"/><path d="M3.5 10h17M16 14.8h.01"/>',
-    star: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z"/>'
-  };
-  const GEAR = '<circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2.2"/><path stroke-width="3.4" stroke-linecap="butt" d="M12 2.6v3M12 18.4v3M2.6 12h3M18.4 12h3M5.35 5.35l2.1 2.1M16.55 16.55l2.1 2.1M5.35 18.65l2.1-2.1M16.55 7.45l2.1-2.1"/>';
-  const svg = (inner, w) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + (w || 1.8) + '" stroke-linecap="round" stroke-linejoin="round">' + inner + '</svg>';
-
-  /* Einstellungen */
-  const old = read('solar.buchfuehrung.names', {});
-  const DEF = {
-    workName: 'Arbeit', workIcon: 'laptop', booksName: 'Buchführung', booksIcon: 'euro',
-    owe: 'Ich schulde', get: 'Mir wird geschuldet', unit1: 'Stück', unitN: 'Stück',
-    fixName: old.fix || '', fixPrice: 15, ppName: old.pp || '', ppPrice: 3
-  };
-  let S = { ...DEF, ...read(SET_KEY, {}) };
-  /* Frühere Standard-Einheit, nie selbst geändert: auf die neue umstellen. */
-  if (S.unit1 === 'Panel' && S.unitN === 'Panels') { S.unit1 = DEF.unit1; S.unitN = DEF.unitN; }
-  const t = k => String(S[k]).trim() || DEF[k];
-  const panelsText = n => n.toLocaleString('de-DE') + ' ' + (n === 1 ? t('unit1') : t('unitN'));
-
-  let entries = read(KEY, []);
-  let editId = null, dir = 'owe';
-
-  function apply() {
-    $$('[data-t]').forEach(n => { n.textContent = t(n.dataset.t); });
-    $$('.tab').forEach(b => {
-      const v = b.dataset.view;
-      b.innerHTML = svg(ICONS[S[v + 'Icon']] || ICONS[DEF[v + 'Icon']]);
-      const s = document.createElement('span');
-      s.textContent = t(v + 'Name');
-      b.append(s);
-    });
-    $$('.l-price').forEach(n => { n.textContent = 'Preis pro ' + t('unit1'); });
-    $$('.icons').forEach(g => g.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.name === S[g.dataset.icon])));
-    document.title = t('workName') + ' · ' + t('booksName');
-    render();
-  }
-  const saveS = () => { write(SET_KEY, S); apply(); };
-  const fillSettings = () => $$('[data-s]').forEach(i => { const v = S[i.dataset.s]; i.value = typeof v === 'number' ? fmt(v) : v; });
-
-  $$('.gear').forEach(b => { b.innerHTML = svg(GEAR, 1.7); b.onclick = () => { fillSettings(); openSheet('settings'); }; });
-  $$('.icons').forEach(g => {
-    for (const name in ICONS) {
-      const b = document.createElement('button');
-      b.type = 'button'; b.dataset.name = name; b.setAttribute('aria-label', name);
-      b.innerHTML = svg(ICONS[name]);
-      b.onclick = () => { S[g.dataset.icon] = name; saveS(); };
-      g.append(b);
-    }
-  });
-  $$('[data-s]').forEach(i => i.addEventListener('input', () => {
-    const k = i.dataset.s;
-    S[k] = typeof DEF[k] === 'number' ? num(i.value) : i.value;
-    saveS();
-  }));
-  let sureReset = false;
-  $('reset').onclick = () => {
-    if (sureReset) { S = { ...DEF, fixName: '', ppName: '' }; sureReset = false; $('reset').textContent = 'Alles auf Standard zurücksetzen'; fillSettings(); saveS(); return; }
-    sureReset = true; $('reset').textContent = 'Wirklich zurücksetzen?';
-    setTimeout(() => { sureReset = false; $('reset').textContent = 'Alles auf Standard zurücksetzen'; }, 3000);
-  };
-  $('settings').addEventListener('submit', ev => { ev.preventDefault(); closeSheet(); });
-
-  /* Stempelkarte MacPunkte */
-  const MAC_KEY = 'solar.macpunkte.v1', GOAL = 5, LOAN_MS = 24 * 60 * 60 * 1000;
-  let M = { stamps: 0, until: null, ...read(MAC_KEY, {}) };
-  const two = n => String(n).padStart(2, '0');
-  let sureReturn = false;
-
-  function tickMac() {
-    if (!M.until) return;
-    const left = Math.max(0, M.until - Date.now());
-    const sec = Math.ceil(left / 1000);
-    $('mac-time').textContent = two(Math.floor(sec / 3600)) + ':' + two(Math.floor(sec / 60) % 60) + ':' + two(sec % 60);
-    $('mac-bar').style.width = (100 - left / LOAN_MS * 100) + '%';
-    const over = left === 0;
-    if (over !== $('mac-timer').classList.contains('over')) renderMac();
-  }
-
-  function renderMac() {
-    const loan = !!M.until, over = loan && Date.now() >= M.until, full = M.stamps >= GOAL;
-    $('mac-count').textContent = M.stamps + ' von ' + GOAL;
-    const box = $('mac-stamps');
-    box.replaceChildren();
-    for (let i = 1; i <= GOAL; i++) {
-      const d = document.createElement('div');
-      if (i <= M.stamps) { d.className = 'on'; d.innerHTML = svg(ICONS.laptop, 2); } else d.textContent = i;
-      box.append(d);
-    }
-    $('mac-timer').hidden = !loan;
-    $('mac-timer').classList.toggle('over', over);
-    let info;
-    if (over) info = 'Die 24 Stunden sind um. Bitte gib das MacBook zurück.';
-    else if (loan) info = 'Rückgabe bis ' + new Date(M.until).toLocaleString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) + ' Uhr.';
-    else if (full) info = 'Karte voll. Du darfst das MacBook jetzt für 24 Stunden ausleihen.';
-    else info = 'Noch ' + (GOAL - M.stamps) + ' Stempel, dann darfst du das MacBook für 24 Stunden ausleihen.';
-    if (loan && full) info += ' Deine Karte ist schon wieder voll – nach der Rückgabe kannst du erneut ausleihen.';
-    $('mac-info').textContent = info;
-    $('mac-loan').hidden = !full || loan;
-    $('mac-add').hidden = full;
-    $('mac-return').hidden = !loan;
-    $('mac-return').textContent = sureReturn ? 'Wirklich schon zurückgegeben?' : 'MacBook zurückgegeben';
-    $('mac-undo').hidden = M.stamps === 0;
-    tickMac();
-  }
-  const saveMac = () => { write(MAC_KEY, M); renderMac(); };
-  $('mac-add').onclick = () => { if (M.stamps < GOAL) { M.stamps++; saveMac(); } };
-  $('mac-undo').onclick = () => { if (M.stamps > 0) { M.stamps--; saveMac(); } };
-  $('mac-loan').onclick = () => { if (M.stamps >= GOAL && !M.until) { M.stamps = 0; M.until = Date.now() + LOAN_MS; saveMac(); } };
-  $('mac-return').onclick = () => {
-    /* Vor Ablauf der Zeit zweimal tippen, damit der Timer nicht versehentlich endet. */
-    if (Date.now() < M.until && !sureReturn) {
-      sureReturn = true; renderMac();
-      setTimeout(() => { sureReturn = false; renderMac(); }, 3000);
-      return;
-    }
-    sureReturn = false; M.until = null; saveMac();
-  };
-  setInterval(tickMac, 1000);
-  document.addEventListener('visibilitychange', tickMac);
-  renderMac();
-
-  /* Tabs */
-  const show = view => {
-    $$('.tab').forEach(b => b.classList.toggle('active', b.dataset.view === view));
-    $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
-    write('solar.tab', view);
-    scrollTo(0, 0);
-  };
-  $$('.tab').forEach(b => b.addEventListener('click', () => show(b.dataset.view)));
-  show(read('solar.tab', 'work'));
-
-  /* Liste */
-  const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
-  const row = (a, b) => { const d = el('div'); d.append(el('span', '', a), el('span', '', b)); return d; };
-
-  function card(e) {
-    const c = el('div', 'entry ' + e.dir + (e.done ? ' done' : ''));
-    const top = el('div', 'entry-top');
-    top.append(el('div', 'person', e.person), el('div', 'total', eur(total(e))));
-    const rows = el('div', 'rows');
-    rows.append(
-      e.fixQty == null
-        ? row(e.fixName || 'Festpreis', eur(e.fixPrice))
-        : row((e.fixName || 'Position 1') + ' · ' + e.fixQty.toLocaleString('de-DE') + ' × ' + eur(e.fixPrice), eur(e.fixQty * e.fixPrice)),
-      row((e.ppName || 'Position 2') + ' · ' + e.panels.toLocaleString('de-DE') + ' × ' + eur(e.ppPrice), eur(e.panels * e.ppPrice))
-    );
-    const actions = el('div', 'actions');
-    const done = el('button', '', e.done ? 'Wieder öffnen' : 'Erledigt');
-    done.onclick = () => { e.done = !e.done; save(); };
-    const edit = el('button', '', 'Bearbeiten');
-    edit.onclick = () => openEntry(e);
-    const del = el('button', 'del', 'Löschen');
-    let sure = false;
-    del.onclick = () => {
-      if (sure) { entries = entries.filter(x => x !== e); save(); return; }
-      sure = true; del.textContent = 'Wirklich löschen?';
-      setTimeout(() => { sure = false; del.textContent = 'Löschen'; }, 3000);
+  function clean(s) {
+    s = s || {};
+    var n = Math.floor(Number(s.stamps)) || 0;
+    return {
+      stamps: Math.min(GOAL, Math.max(0, n)),
+      loanEnd: typeof s.loanEnd === "number" && isFinite(s.loanEnd) ? s.loanEnd : null,
+      redeemed: Math.max(0, Math.floor(Number(s.redeemed)) || 0)
     };
-    actions.append(done, edit, del);
-    c.append(top, el('div', 'dir', t(e.dir) + ' · ' + panelsText(count(e))), rows, actions);
-    return c;
+  }
+  function loadLocal() {
+    try { return clean(JSON.parse(localStorage.getItem(KEY))); } catch (e) { return clean(null); }
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+    if (!docRef) return;
+    var body = { stamps: state.stamps, loanEnd: state.loanEnd, redeemed: state.redeemed };
+    queue = queue.then(function () { return docRef.set(body); }).then(function () {
+      $("sync").textContent = "Gespeichert und auf allen Geräten gleich.";
+    }, function () {
+      $("sync").textContent = "Speichern online fehlgeschlagen. Der Stand liegt nur auf diesem Gerät.";
+    });
+  }
+
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function hms(ms) {
+    var t = Math.max(0, Math.ceil(ms / 1000));
+    return pad(Math.floor(t / 3600)) + ":" + pad(Math.floor(t / 60) % 60) + ":" + pad(t % 60);
+  }
+  function when(ts) {
+    return new Date(ts).toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) + " Uhr";
+  }
+
+  function tick() {
+    var clock = $("clock");
+    if (state.loanEnd === null) { clock.textContent = "24:00:00"; return; }
+    var left = state.loanEnd - Date.now();
+    if (left <= 0) {
+      if (!clock.classList.contains("over")) render();
+      clock.textContent = "+" + hms(-left);
+    } else {
+      clock.textContent = hms(left);
+      $("bar-fill").style.width = Math.max(0, Math.min(100, left / LOAN_MS * 100)) + "%";
+    }
   }
 
   function render() {
-    const open = entries.filter(e => !e.done), closed = entries.filter(e => e.done);
-    for (const d of ['owe', 'get']) {
-      const xs = open.filter(e => e.dir === d);
-      $('sum-' + d + '-money').textContent = eur(xs.reduce((s, e) => s + total(e), 0));
-      $('sum-' + d + '-panels').textContent = panelsText(xs.reduce((s, e) => s + count(e), 0));
+    var full = state.stamps >= GOAL, active = state.loanEnd !== null;
+    var over = active && Date.now() >= state.loanEnd;
+
+    var html = "";
+    for (var i = 0; i < GOAL; i++) {
+      html += i < state.stamps
+        ? '<li class="slot on' + (i === fresh ? " fresh" : "") + '" style="--r:' + TILT[i] + 'deg" aria-label="Stempel ' + (i + 1) + ' gesammelt">' + ICON + "</li>"
+        : '<li class="slot" aria-label="Feld ' + (i + 1) + ' frei">' + (i + 1) + "</li>";
     }
-    const list = $('list');
-    list.replaceChildren();
-    if (!entries.length) {
-      const empty = el('div', 'empty');
-      empty.append(el('b', '', 'Noch keine Einträge'), 'Tippe oben auf +, um den ersten Eintrag anzulegen.');
-      list.append(empty);
-      return;
-    }
-    const group = (title, xs) => {
-      if (!xs.length) return;
-      const l = el('div', 'list');
-      xs.forEach(e => l.append(card(e)));
-      const h = el('div', 'section', title);
-      h.style.marginTop = list.children.length ? '24px' : '0';
-      list.append(h, l);
-    };
-    group('Offen', open);
-    group('Erledigt', closed);
-  }
-  function save() { write(KEY, entries); render(); }
+    $("slots").innerHTML = html;
+    fresh = -1;
 
-  /* Sheets */
-  function openSheet(id) {
-    $$('.sheet').forEach(s => s.classList.toggle('open', s.id === id));
-    $(id).scrollTop = 0;
-    document.body.classList.add('sheet-open');
-  }
-  function closeSheet() {
-    $$('.sheet').forEach(s => s.classList.remove('open'));
-    document.body.classList.remove('sheet-open');
-    document.activeElement && document.activeElement.blur();
-  }
-  $('backdrop').onclick = closeSheet;
+    $("count").textContent = state.stamps + " / " + GOAL;
+    var rest = GOAL - state.stamps;
+    $("hint").textContent = full ? "Karte voll." : "Noch " + rest + (rest === 1 ? " Stempel" : " Stempel") + " bis zur Ausleihe.";
+    $("redeemed").textContent = "Eingelöst: " + state.redeemed;
 
-  /* Eingabe */
-  const f = { person: $('f-person'), fixQty: $('f-fixqty'), panels: $('f-panels'), fixName: $('f-fixname'), fixPrice: $('f-fixprice'), ppName: $('f-ppname'), ppPrice: $('f-ppprice') };
-  const setDir = d => { dir = d; $$('#seg button').forEach(b => b.classList.toggle('on', b.dataset.dir === d)); };
-  $$('#seg button').forEach(b => b.addEventListener('click', () => setDir(b.dataset.dir)));
-  const updateTotal = () => { $('f-total').textContent = eur(Math.round(num(f.fixQty.value)) * num(f.fixPrice.value) + Math.round(num(f.panels.value)) * num(f.ppPrice.value)); };
-  Object.values(f).forEach(i => i.addEventListener('input', updateTotal));
+    $("btn-stamp").hidden = full;
+    $("btn-redeem").hidden = !full;
+    $("btn-redeem").disabled = active;
+    $("btn-redeem").textContent = active ? "Erst nach der laufenden Ausleihe einlösbar" : "MacBook für 24 h ausleihen";
+    $("btn-undo").hidden = state.stamps === 0;
 
-  function openEntry(e) {
-    editId = e ? e.id : null;
-    $('sheet-title').textContent = e ? 'Eintrag bearbeiten' : 'Neuer Eintrag';
-    setDir(e ? e.dir : 'owe');
-    f.person.value = e ? e.person : '';
-    f.fixQty.value = e ? q1(e) : '';
-    f.panels.value = e ? e.panels : '';
-    f.fixName.value = e ? e.fixName : S.fixName;
-    f.fixPrice.value = fmt(e ? e.fixPrice : S.fixPrice);
-    f.ppName.value = e ? e.ppName : S.ppName;
-    f.ppPrice.value = fmt(e ? e.ppPrice : S.ppPrice);
-    updateTotal();
-    openSheet('sheet');
+    var pill = $("pill");
+    pill.className = "pill " + (over ? "over" : active ? "run" : "idle");
+    pill.textContent = over ? "Zeit abgelaufen" : active ? "Läuft" : "Nicht aktiv";
+    $("clock").classList.toggle("over", over);
+    $("bar").hidden = !active || over;
+    $("loan-note").textContent = over ? "Die 24 Stunden sind seit " + when(state.loanEnd) + " vorbei. Bitte MacBook zurückgeben."
+      : active ? "Rückgabe bis " + when(state.loanEnd) + "."
+      : "Der Timer startet, sobald du eine volle Karte einlöst.";
+    $("btn-return").hidden = !active || confirming;
+    $("btn-return").textContent = over ? "MacBook zurückgegeben" : "Ausleihe vorzeitig beenden";
+    $("confirm").hidden = !confirming;
+    tick();
   }
 
-  $('add').onclick = () => openEntry(null);
-  $('cancel').onclick = closeSheet;
-  $('sheet').addEventListener('submit', ev => {
-    ev.preventDefault();
-    const person = f.person.value.trim();
-    if (!person) { f.person.focus(); return; }
-    const data = {
-      person, dir,
-      panels: Math.round(num(f.panels.value)), fixQty: Math.round(num(f.fixQty.value)),
-      fixName: f.fixName.value.trim(), fixPrice: num(f.fixPrice.value),
-      ppName: f.ppName.value.trim(), ppPrice: num(f.ppPrice.value)
-    };
-    const old = entries.find(x => x.id === editId);
-    if (old) Object.assign(old, data);
-    else entries.unshift({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), done: false, ...data });
-    save();
-    closeSheet();
+  $("btn-stamp").addEventListener("click", function () {
+    if (state.stamps >= GOAL) return;
+    fresh = state.stamps; state.stamps++; save(); render();
   });
+  $("btn-undo").addEventListener("click", function () {
+    if (state.stamps === 0) return;
+    state.stamps--; save(); render();
+  });
+  $("btn-redeem").addEventListener("click", function () {
+    if (state.stamps < GOAL || state.loanEnd !== null) return;
+    state.stamps = 0; state.redeemed++; state.loanEnd = Date.now() + LOAN_MS;
+    save(); render();
+  });
+  $("btn-return").addEventListener("click", function () {
+    if (state.loanEnd === null) return;
+    if (Date.now() >= state.loanEnd) { state.loanEnd = null; save(); }
+    else confirming = true;
+    render();
+  });
+  $("btn-confirm").addEventListener("click", function () {
+    confirming = false; state.loanEnd = null; save(); render();
+  });
+  $("btn-cancel").addEventListener("click", function () { confirming = false; render(); });
 
-  apply();
+  state = loadLocal();
+  $("sync").textContent = "Der Stand wird auf diesem Gerät gespeichert.";
+  render();
+  setInterval(tick, 500);
+  document.addEventListener("visibilitychange", tick);
+
+  // Im Claude-Viewer zusätzlich online speichern, damit der Stand auf allen Geräten gleich ist.
+  if (window.claude && typeof window.claude.use === "function") {
+    window.claude.use("db").then(function (db) {
+      if (!db) return;
+      docRef = db.doc("macpunkte/karte");
+      docRef.onSnapshot(function (snap) {
+        if (snap.exists) {
+          state = clean(snap.data());
+          try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+          if (state.loanEnd === null) confirming = false;
+          render();
+        }
+        if (!snap.metadata.fromCache) $("sync").textContent = "Gespeichert und auf allen Geräten gleich.";
+      }, function () {
+        docRef = null;
+        $("sync").textContent = "Online-Speicher nicht erreichbar. Der Stand liegt nur auf diesem Gerät.";
+      });
+    }).catch(function () {});
+  }
 })();
 </script>
 </body>
