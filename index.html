@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>body{margin:0}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>MacPunkte</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: eine schmale Spalte. Oben die Stempelkarte als Objekt (Kartenpapier, gestanzte Felder),
+   darunter die Ausleihe als ruhige Zeitanzeige. */
+:root {
+  --bg: #e6eaf1;
+  --card: #f8fafc;
+  --line: #c3cbdb;
+  --fg: #1a2238;
+  --muted: #56617c;
+  --ink: #2743c9;        /* Stempelfarbe */
+  --ink-soft: #2743c91f;
+  --on-ink: #ffffff;
+  --go: #17794a;
+  --late: #b3261e;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
+  --body: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10131c; --card: #1a1f2e; --line: #343c52; --fg: #e9ecf6; --muted: #9aa4bf;
+    --ink: #8fa4ff; --ink-soft: #8fa4ff24; --on-ink: #0d1330; --go: #5fd39a; --late: #ff8a80;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10131c; --card: #1a1f2e; --line: #343c52; --fg: #e9ecf6; --muted: #9aa4bf;
+  --ink: #8fa4ff; --ink-soft: #8fa4ff24; --on-ink: #0d1330; --go: #5fd39a; --late: #ff8a80;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font: 400 16px/1.5 var(--body);
+  padding-block: 28px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.app { max-width: 30rem; margin-inline: auto; display: flex; flex-direction: column; gap: 20px; }
+
+header { display: flex; flex-direction: column; gap: 2px; }
+h1 { font: 800 2.5rem/1 var(--display); letter-spacing: -0.02em; margin: 0; }
+h1 span { color: var(--ink); }
+.sub { color: var(--muted); margin: 0; }
+
+/* Stempelkarte */
+.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+  padding: 18px; display: flex; flex-direction: column; gap: 16px;
+}
+.card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.label { font: 600 0.72rem/1.2 var(--body); letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+.count { font: 700 0.95rem/1.2 var(--mono); font-variant-numeric: tabular-nums; }
+.slots { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; list-style: none; margin: 0; padding: 0; }
+.slot {
+  aspect-ratio: 1; max-width: 100%; border-radius: 50%;
+  border: 2px dashed var(--line); color: var(--muted);
+  display: grid; place-items: center; font: 500 1rem var(--mono);
+}
+.slot.on {
+  border: 3px double var(--ink); color: var(--ink); background: var(--ink-soft);
+  transform: rotate(var(--r, 0deg));
+}
+.slot.on svg { width: 52%; height: 52%; }
+.slot.fresh { animation: thump .32s cubic-bezier(.2, 1.6, .4, 1); }
+@keyframes thump { from { transform: rotate(var(--r, 0deg)) scale(1.7); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .slot.fresh { animation: none; } }
+.card-foot { border-top: 1px dashed var(--line); padding-top: 12px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; color: var(--muted); font-size: 0.9rem; }
+
+/* Knöpfe */
+.actions { display: flex; flex-direction: column; gap: 10px; }
+button {
+  font: 600 1rem/1.2 var(--body); border-radius: 10px; padding: 14px 18px; cursor: pointer;
+  border: 1px solid var(--line); background: transparent; color: var(--fg);
+}
+button.primary { background: var(--ink); border-color: var(--ink); color: var(--on-ink); }
+button.quiet { padding: 8px 10px; border: 0; color: var(--muted); font-weight: 500; font-size: 0.9rem; text-decoration: underline; text-underline-offset: 3px; align-self: center; }
+button.danger { border-color: var(--late); color: var(--late); }
+button:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; }
+.row > button { flex: 1 1 8rem; }
+
+/* Ausleihe */
+.loan { display: flex; flex-direction: column; gap: 10px; }
+.loan-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pill { font: 600 0.78rem/1 var(--body); padding: 5px 9px; border-radius: 99px; border: 1px solid currentColor; }
+.pill.idle { color: var(--muted); } .pill.run { color: var(--go); } .pill.over { color: var(--late); }
+.clock { font: 700 clamp(2.6rem, 15vw, 4.2rem)/1 var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -0.03em; }
+.clock.over { color: var(--late); }
+.bar { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--go); border-radius: 99px; }
+.note { color: var(--muted); margin: 0; font-size: 0.95rem; }
+.sync { color: var(--muted); font-size: 0.8rem; text-align: center; margin: 0; }
+</style>
+
+<div class="app">
+  <header>
+    <h1>Mac<span>Punkte</span></h1>
+    <p class="sub">5 Stempel sammeln, dann 24 Stunden MacBook ausleihen.</p>
+  </header>
+
+  <section class="card" aria-labelledby="card-label">
+    <div class="card-head">
+      <span class="label" id="card-label">Stempelkarte</span>
+      <span class="count" id="count" aria-live="polite"></span>
+    </div>
+    <ol class="slots" id="slots"></ol>
+    <div class="card-foot">
+      <span id="hint"></span>
+      <span id="redeemed"></span>
+    </div>
+  </section>
+
+  <div class="actions">
+    <button class="primary" id="btn-stamp" type="button">Stempel eintragen</button>
+    <button class="primary" id="btn-redeem" type="button" hidden>MacBook für 24 h ausleihen</button>
+    <button class="quiet" id="btn-undo" type="button">Letzten Stempel entfernen</button>
+  </div>
+
+  <section class="card loan" aria-labelledby="loan-label">
+    <div class="loan-head">
+      <span class="label" id="loan-label">Ausleihe</span>
+      <span class="pill idle" id="pill">Nicht aktiv</span>
+    </div>
+    <div class="clock" id="clock" role="timer">24:00:00</div>
+    <div class="bar" id="bar" hidden><i id="bar-fill"></i></div>
+    <p class="note" id="loan-note"></p>
+    <button id="btn-return" type="button" hidden>MacBook zurückgegeben</button>
+    <div class="row" id="confirm" hidden>
+      <button class="danger" id="btn-confirm" type="button">Ja, Ausleihe beenden</button>
+      <button id="btn-cancel" type="button">Weiter ausleihen</button>
+    </div>
+  </section>
+
+  <p class="sync" id="sync"></p>
+</div>
+
+<script>
+(function () {
+  var GOAL = 5, LOAN_MS = 24 * 60 * 60 * 1000, KEY = "macpunkte-v1";
+  var TILT = [-8, 5, -3, 9, -6];
+  var ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="5" width="14" height="10" rx="1.5"/><path d="M2.5 19h19"/></svg>';
+
+  var state = { stamps: 0, loanEnd: null, redeemed: 0 };
+  var fresh = -1, confirming = false, docRef = null, queue = Promise.resolve();
+  var $ = function (id) { return document.getElementById(id); };
+
+  function clean(s) {
+    s = s || {};
+    var n = Math.floor(Number(s.stamps)) || 0;
+    return {
+      stamps: Math.min(GOAL, Math.max(0, n)),
+      loanEnd: typeof s.loanEnd === "number" && isFinite(s.loanEnd) ? s.loanEnd : null,
+      redeemed: Math.max(0, Math.floor(Number(s.redeemed)) || 0)
+    };
+  }
+  function loadLocal() {
+    try { return clean(JSON.parse(localStorage.getItem(KEY))); } catch (e) { return clean(null); }
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+    if (!docRef) return;
+    var body = { stamps: state.stamps, loanEnd: state.loanEnd, redeemed: state.redeemed };
+    queue = queue.then(function () { return docRef.set(body); }).then(function () {
+      $("sync").textContent = "Gespeichert und auf allen Geräten gleich.";
+    }, function () {
+      $("sync").textContent = "Speichern online fehlgeschlagen. Der Stand liegt nur auf diesem Gerät.";
+    });
+  }
+
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function hms(ms) {
+    var t = Math.max(0, Math.ceil(ms / 1000));
+    return pad(Math.floor(t / 3600)) + ":" + pad(Math.floor(t / 60) % 60) + ":" + pad(t % 60);
+  }
+  function when(ts) {
+    return new Date(ts).toLocaleString("de-DE", { weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) + " Uhr";
+  }
+
+  function tick() {
+    var clock = $("clock");
+    if (state.loanEnd === null) { clock.textContent = "24:00:00"; return; }
+    var left = state.loanEnd - Date.now();
+    if (left <= 0) {
+      if (!clock.classList.contains("over")) render();
+      clock.textContent = "+" + hms(-left);
+    } else {
+      clock.textContent = hms(left);
+      $("bar-fill").style.width = Math.max(0, Math.min(100, left / LOAN_MS * 100)) + "%";
+    }
+  }
+
+  function render() {
+    var full = state.stamps >= GOAL, active = state.loanEnd !== null;
+    var over = active && Date.now() >= state.loanEnd;
+
+    var html = "";
+    for (var i = 0; i < GOAL; i++) {
+      html += i < state.stamps
+        ? '<li class="slot on' + (i === fresh ? " fresh" : "") + '" style="--r:' + TILT[i] + 'deg" aria-label="Stempel ' + (i + 1) + ' gesammelt">' + ICON + "</li>"
+        : '<li class="slot" aria-label="Feld ' + (i + 1) + ' frei">' + (i + 1) + "</li>";
+    }
+    $("slots").innerHTML = html;
+    fresh = -1;
+
+    $("count").textContent = state.stamps + " / " + GOAL;
+    var rest = GOAL - state.stamps;
+    $("hint").textContent = full ? "Karte voll." : "Noch " + rest + (rest === 1 ? " Stempel" : " Stempel") + " bis zur Ausleihe.";
+    $("redeemed").textContent = "Eingelöst: " + state.redeemed;
+
+    $("btn-stamp").hidden = full;
+    $("btn-redeem").hidden = !full;
+    $("btn-redeem").disabled = active;
+    $("btn-redeem").textContent = active ? "Erst nach der laufenden Ausleihe einlösbar" : "MacBook für 24 h ausleihen";
+    $("btn-undo").hidden = state.stamps === 0;
+
+    var pill = $("pill");
+    pill.className = "pill " + (over ? "over" : active ? "run" : "idle");
+    pill.textContent = over ? "Zeit abgelaufen" : active ? "Läuft" : "Nicht aktiv";
+    $("clock").classList.toggle("over", over);
+    $("bar").hidden = !active || over;
+    $("loan-note").textContent = over ? "Die 24 Stunden sind seit " + when(state.loanEnd) + " vorbei. Bitte MacBook zurückgeben."
+      : active ? "Rückgabe bis " + when(state.loanEnd) + "."
+      : "Der Timer startet, sobald du eine volle Karte einlöst.";
+    $("btn-return").hidden = !active || confirming;
+    $("btn-return").textContent = over ? "MacBook zurückgegeben" : "Ausleihe vorzeitig beenden";
+    $("confirm").hidden = !confirming;
+    tick();
+  }
+
+  $("btn-stamp").addEventListener("click", function () {
+    if (state.stamps >= GOAL) return;
+    fresh = state.stamps; state.stamps++; save(); render();
+  });
+  $("btn-undo").addEventListener("click", function () {
+    if (state.stamps === 0) return;
+    state.stamps--; save(); render();
+  });
+  $("btn-redeem").addEventListener("click", function () {
+    if (state.stamps < GOAL || state.loanEnd !== null) return;
+    state.stamps = 0; state.redeemed++; state.loanEnd = Date.now() + LOAN_MS;
+    save(); render();
+  });
+  $("btn-return").addEventListener("click", function () {
+    if (state.loanEnd === null) return;
+    if (Date.now() >= state.loanEnd) { state.loanEnd = null; save(); }
+    else confirming = true;
+    render();
+  });
+  $("btn-confirm").addEventListener("click", function () {
+    confirming = false; state.loanEnd = null; save(); render();
+  });
+  $("btn-cancel").addEventListener("click", function () { confirming = false; render(); });
+
+  state = loadLocal();
+  $("sync").textContent = "Der Stand wird auf diesem Gerät gespeichert.";
+  render();
+  setInterval(tick, 500);
+  document.addEventListener("visibilitychange", tick);
+
+  // Im Claude-Viewer zusätzlich online speichern, damit der Stand auf allen Geräten gleich ist.
+  if (window.claude && typeof window.claude.use === "function") {
+    window.claude.use("db").then(function (db) {
+      if (!db) return;
+      docRef = db.doc("macpunkte/karte");
+      docRef.onSnapshot(function (snap) {
+        if (snap.exists) {
+          state = clean(snap.data());
+          try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+          if (state.loanEnd === null) confirming = false;
+          render();
+        }
+        if (!snap.metadata.fromCache) $("sync").textContent = "Gespeichert und auf allen Geräten gleich.";
+      }, function () {
+        docRef = null;
+        $("sync").textContent = "Online-Speicher nicht erreichbar. Der Stand liegt nur auf diesem Gerät.";
+      });
+    }).catch(function () {});
+  }
+})();
+</script>
+</body>
+</html>
