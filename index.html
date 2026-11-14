@@ -77,7 +77,11 @@
     padding-right: max(16px, env(safe-area-inset-right, 0px));
   }
   .view.active { display: block; }
-  .head { display: flex; align-items: flex-end; justify-content: space-between; margin: 0 4px 16px; }
+  .head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 0 4px 16px; }
+  .head h1 { min-width: 0; overflow-wrap: anywhere; }
+  .head-btns { display: flex; gap: 10px; flex: none; }
+  .gear { width: 36px; height: 36px; border-radius: 50%; background: var(--field); color: var(--accent); display: grid; place-items: center; }
+  .gear svg { width: 22px; height: 22px; }
   h1 { font-size: 34px; line-height: 1.1; font-weight: 700; letter-spacing: -.02em; margin: 0; }
   .add {
     width: 36px; height: 36px; border-radius: 50%;
@@ -136,7 +140,8 @@
     font-size: 10px; font-weight: 600; color: var(--text);
     transition: background .2s, color .2s;
   }
-  .tab svg { width: 26px; height: 26px; }
+  .tab svg { width: 26px; height: 26px; flex: none; }
+  .tab span { max-width: 88px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tab.active { background: var(--field); color: var(--accent); }
 
   /* Eingabe-Sheet */
@@ -152,7 +157,7 @@
     transform: translateY(105%); transition: transform .3s cubic-bezier(.2, .8, .2, 1);
   }
   body.sheet-open .backdrop { opacity: 1; pointer-events: auto; }
-  body.sheet-open .sheet { transform: none; }
+  .sheet.open { transform: none; }
   .sheet-head {
     position: sticky; top: 0; background: var(--bg); z-index: 1;
     display: flex; align-items: center; justify-content: space-between;
@@ -179,14 +184,24 @@
   .field .unit { color: var(--muted); flex: none; }
   .hint { font-size: 13px; color: var(--muted); margin: -14px 16px 20px; }
   .sheet-total { display: flex; justify-content: space-between; font-size: 20px; font-weight: 700; margin: 0 16px; font-variant-numeric: tabular-nums; }
+  .sheet .section { margin-top: 4px; }
+  .icons { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; padding: 10px 12px; border-top: .5px solid var(--line); }
+  .icons button { aspect-ratio: 1; border-radius: 10px; display: grid; place-items: center; color: var(--muted); }
+  .icons button svg { width: 24px; height: 24px; }
+  .icons button.on { background: var(--accent); color: #fff; }
+  .reset { width: 100%; min-height: 46px; color: var(--red); }
+  @media (max-width: 380px) { .icons { grid-template-columns: repeat(6, 1fr); } }
 </style>
 </head>
 <body>
 
 <main id="view-work" class="view active">
-  <div class="head"><h1>Arbeit</h1></div>
+  <div class="head">
+    <h1 data-t="workName"></h1>
+    <div class="head-btns"><button class="gear" aria-label="Einstellungen"></button></div>
+  </div>
   <div class="empty">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="2"/><path d="M2 19.5h20"/></svg>
+    <svg id="work-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></svg>
     <b>Kommt als Nächstes</b>
     Dieser Bereich wird im nächsten Schritt gebaut.
   </div>
@@ -194,20 +209,23 @@
 
 <main id="view-books" class="view">
   <div class="head">
-    <h1>Buchführung</h1>
-    <button class="add" id="add" aria-label="Neuer Eintrag">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
-    </button>
+    <h1 data-t="booksName"></h1>
+    <div class="head-btns">
+      <button class="gear" aria-label="Einstellungen"></button>
+      <button class="add" id="add" aria-label="Neuer Eintrag">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+    </div>
   </div>
 
   <div class="summary">
     <div class="sum owe">
-      <div class="label">Ich schulde</div>
+      <div class="label" data-t="owe"></div>
       <div class="money" id="sum-owe-money"></div>
       <div class="panels" id="sum-owe-panels"></div>
     </div>
     <div class="sum get">
-      <div class="label">Mir wird geschuldet</div>
+      <div class="label" data-t="get"></div>
       <div class="money" id="sum-get-money"></div>
       <div class="panels" id="sum-get-panels"></div>
     </div>
@@ -217,17 +235,12 @@
 </main>
 
 <nav class="tabbar">
-  <button class="tab active" data-view="work" aria-label="Arbeit">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="2"/><path d="M2 19.5h20"/></svg>
-    Arbeit
-  </button>
-  <button class="tab" data-view="books" aria-label="Buchführung">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 6.2A7 7 0 1 0 17.5 17.8"/><path d="M4 10h9M4 14h9"/></svg>
-    Buchführung
-  </button>
+  <button class="tab active" data-view="work"></button>
+  <button class="tab" data-view="books"></button>
 </nav>
 
 <div class="backdrop" id="backdrop"></div>
+
 <form class="sheet" id="sheet" autocomplete="off" novalidate>
   <div class="sheet-head">
     <button type="button" id="cancel">Abbrechen</button>
@@ -236,13 +249,13 @@
   </div>
 
   <div class="seg" id="seg">
-    <button type="button" data-dir="owe">Ich schulde</button>
-    <button type="button" data-dir="get">Mir wird geschuldet</button>
+    <button type="button" data-dir="owe" data-t="owe"></button>
+    <button type="button" data-dir="get" data-t="get"></button>
   </div>
 
   <div class="group">
     <div class="field"><label for="f-person">Person</label><input id="f-person" placeholder="Name" enterkeyhint="next"></div>
-    <div class="field"><label for="f-panels">Panels</label><input id="f-panels" inputmode="numeric" placeholder="0"></div>
+    <div class="field"><label for="f-panels" data-t="unitN"></label><input id="f-panels" inputmode="numeric" placeholder="0"></div>
   </div>
 
   <div class="group">
@@ -252,39 +265,152 @@
   <div class="hint">Festpreis, einmal pro Eintrag.</div>
 
   <div class="group">
-    <div class="field"><input class="name" id="f-ppname" placeholder="Eigener Name" aria-label="Name der Position mit Preis pro Panel"></div>
-    <div class="field"><label for="f-ppprice">Preis pro Panel</label><input id="f-ppprice" inputmode="decimal" placeholder="0"><span class="unit">€</span></div>
+    <div class="field"><input class="name" id="f-ppname" placeholder="Eigener Name" aria-label="Name der Position mit Preis pro Stück"></div>
+    <div class="field"><label for="f-ppprice" id="l-ppprice"></label><input id="f-ppprice" inputmode="decimal" placeholder="0"><span class="unit">€</span></div>
   </div>
-  <div class="hint">Wird mit der Anzahl der Panels multipliziert.</div>
+  <div class="hint" id="h-pp"></div>
 
   <div class="sheet-total"><span>Gesamt</span><span id="f-total"></span></div>
+</form>
+
+<form class="sheet" id="settings" autocomplete="off" novalidate>
+  <div class="sheet-head">
+    <span></span>
+    <b>Einstellungen</b>
+    <button type="submit" class="save">Fertig</button>
+  </div>
+
+  <div class="section">Erster Bereich</div>
+  <div class="group">
+    <div class="field"><label for="s-workName">Name</label><input id="s-workName" data-s="workName"></div>
+    <div class="icons" data-icon="workIcon"></div>
+  </div>
+
+  <div class="section">Zweiter Bereich</div>
+  <div class="group">
+    <div class="field"><label for="s-booksName">Name</label><input id="s-booksName" data-s="booksName"></div>
+    <div class="icons" data-icon="booksIcon"></div>
+  </div>
+
+  <div class="section">Bezeichnungen</div>
+  <div class="group">
+    <div class="field"><label for="s-owe">Ich schulde</label><input id="s-owe" data-s="owe"></div>
+    <div class="field"><label for="s-get">Mir wird geschuldet</label><input id="s-get" data-s="get"></div>
+    <div class="field"><label for="s-unit1">Einheit (Einzahl)</label><input id="s-unit1" data-s="unit1"></div>
+    <div class="field"><label for="s-unitN">Einheit (Mehrzahl)</label><input id="s-unitN" data-s="unitN"></div>
+  </div>
+
+  <div class="section">Vorgaben für neue Einträge</div>
+  <div class="group">
+    <div class="field"><label for="s-fixName">Name Festpreis</label><input id="s-fixName" data-s="fixName" placeholder="Eigener Name"></div>
+    <div class="field"><label for="s-fixPrice">Preis</label><input id="s-fixPrice" data-s="fixPrice" inputmode="decimal"><span class="unit">€</span></div>
+    <div class="field"><label for="s-ppName">Name Stückpreis</label><input id="s-ppName" data-s="ppName" placeholder="Eigener Name"></div>
+    <div class="field"><label for="s-ppPrice">Preis pro Stück</label><input id="s-ppPrice" data-s="ppPrice" inputmode="decimal"><span class="unit">€</span></div>
+  </div>
+  <div class="hint">Bestehende Einträge behalten ihre Namen und Preise.</div>
+
+  <div class="group"><button type="button" class="reset" id="reset">Alles auf Standard zurücksetzen</button></div>
 </form>
 
 <script>
 (() => {
   const KEY = 'solar.buchfuehrung.v1';
-  const NAMES_KEY = 'solar.buchfuehrung.names';
+  const SET_KEY = 'solar.settings.v1';
   const $ = id => document.getElementById(id);
+  const $$ = sel => document.querySelectorAll(sel);
   const eur = n => n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
   const num = s => { const n = parseFloat(String(s).replace(/\s/g, '').replace(',', '.')); return isFinite(n) && n > 0 ? n : 0; };
   const fmt = n => String(n).replace('.', ',');
-  const panelsText = n => n.toLocaleString('de-DE') + (n === 1 ? ' Panel' : ' Panels');
   const total = e => e.fixPrice + e.panels * e.ppPrice;
 
   const read = (k, fallback) => { try { return JSON.parse(localStorage.getItem(k)) || fallback; } catch { return fallback; } };
   const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+
+  const ICONS = {
+    laptop: '<rect x="4" y="5" width="16" height="11" rx="2"/><path d="M2 19.5h20"/>',
+    euro: '<path d="M17.5 6.2A7 7 0 1 0 17.5 17.8"/><path d="M4 10h9M4 14h9"/>',
+    sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/>',
+    panel: '<path d="M5 5h14l2.5 11h-19z"/><path d="M12 5v11M3.8 10.5h16.4M9 20h6M12 16v4"/>',
+    bolt: '<path d="M13 2 5 13.5h6L10 22l9-12h-6.5z"/>',
+    home: '<path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V20h13V9.5"/>',
+    wrench: '<path d="M15 5.5a4.5 4.5 0 0 0-5.6 5.6L4 16.5a2.1 2.1 0 0 0 3 3l5.4-5.4A4.5 4.5 0 0 0 18.5 9l-3 3-2.5-.5-.5-2.5z"/>',
+    truck: '<path d="M2.5 6.5h11v10h-11zM13.5 10h4l3 3.5v3h-7"/><circle cx="7" cy="17.5" r="2" fill="var(--card)"/><circle cx="17" cy="17.5" r="2" fill="var(--card)"/>',
+    user: '<circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/>',
+    users: '<circle cx="9" cy="8.5" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 5.2a3.5 3.5 0 0 1 0 6.6M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/>',
+    list: '<path d="M9 6.5h11M9 12h11M9 17.5h11M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01"/>',
+    clipboard: '<rect x="5" y="4.5" width="14" height="16.5" rx="2.5"/><path d="M9 3h6v3H9zM9 11h6M9 15h4"/>',
+    calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+    chart: '<path d="M4 20V4M4 20h16M8.5 16v-5M13 16V8M17.5 16v-3"/>',
+    wallet: '<rect x="3.5" y="6" width="17" height="13.5" rx="2.5"/><path d="M3.5 10h17M16 14.8h.01"/>',
+    star: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.2l1.1-6.2L3 9.6l6.2-.9z"/>'
+  };
+  const GEAR = '<circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2.2"/><path stroke-width="3.4" stroke-linecap="butt" d="M12 2.6v3M12 18.4v3M2.6 12h3M18.4 12h3M5.35 5.35l2.1 2.1M16.55 16.55l2.1 2.1M5.35 18.65l2.1-2.1M16.55 7.45l2.1-2.1"/>';
+  const svg = (inner, w) => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + (w || 1.8) + '" stroke-linecap="round" stroke-linejoin="round">' + inner + '</svg>';
+
+  /* Einstellungen */
+  const old = read('solar.buchfuehrung.names', {});
+  const DEF = {
+    workName: 'Arbeit', workIcon: 'laptop', booksName: 'Buchführung', booksIcon: 'euro',
+    owe: 'Ich schulde', get: 'Mir wird geschuldet', unit1: 'Panel', unitN: 'Panels',
+    fixName: old.fix || '', fixPrice: 15, ppName: old.pp || '', ppPrice: 3
+  };
+  let S = { ...DEF, ...read(SET_KEY, {}) };
+  const t = k => String(S[k]).trim() || DEF[k];
+  const panelsText = n => n.toLocaleString('de-DE') + ' ' + (n === 1 ? t('unit1') : t('unitN'));
+
   let entries = read(KEY, []);
   let editId = null, dir = 'owe';
 
+  function apply() {
+    $$('[data-t]').forEach(n => { n.textContent = t(n.dataset.t); });
+    $$('.tab').forEach(b => {
+      const v = b.dataset.view;
+      b.innerHTML = svg(ICONS[S[v + 'Icon']] || ICONS[DEF[v + 'Icon']]);
+      const s = document.createElement('span');
+      s.textContent = t(v + 'Name');
+      b.append(s);
+    });
+    $('work-icon').innerHTML = ICONS[S.workIcon] || ICONS.laptop;
+    $('l-ppprice').textContent = 'Preis pro ' + t('unit1');
+    $('h-pp').textContent = 'Wird mit der Anzahl ' + t('unitN') + ' multipliziert.';
+    $$('.icons').forEach(g => g.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.name === S[g.dataset.icon])));
+    document.title = t('workName') + ' · ' + t('booksName');
+    render();
+  }
+  const saveS = () => { write(SET_KEY, S); apply(); };
+  const fillSettings = () => $$('[data-s]').forEach(i => { const v = S[i.dataset.s]; i.value = typeof v === 'number' ? fmt(v) : v; });
+
+  $$('.gear').forEach(b => { b.innerHTML = svg(GEAR, 1.7); b.onclick = () => { fillSettings(); openSheet('settings'); }; });
+  $$('.icons').forEach(g => {
+    for (const name in ICONS) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.dataset.name = name; b.setAttribute('aria-label', name);
+      b.innerHTML = svg(ICONS[name]);
+      b.onclick = () => { S[g.dataset.icon] = name; saveS(); };
+      g.append(b);
+    }
+  });
+  $$('[data-s]').forEach(i => i.addEventListener('input', () => {
+    const k = i.dataset.s;
+    S[k] = typeof DEF[k] === 'number' ? num(i.value) : i.value;
+    saveS();
+  }));
+  let sureReset = false;
+  $('reset').onclick = () => {
+    if (sureReset) { S = { ...DEF, fixName: '', ppName: '' }; sureReset = false; $('reset').textContent = 'Alles auf Standard zurücksetzen'; fillSettings(); saveS(); return; }
+    sureReset = true; $('reset').textContent = 'Wirklich zurücksetzen?';
+    setTimeout(() => { sureReset = false; $('reset').textContent = 'Alles auf Standard zurücksetzen'; }, 3000);
+  };
+  $('settings').addEventListener('submit', ev => { ev.preventDefault(); closeSheet(); });
+
   /* Tabs */
-  const tabs = document.querySelectorAll('.tab');
   const show = view => {
-    tabs.forEach(t => t.classList.toggle('active', t.dataset.view === view));
-    document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
+    $$('.tab').forEach(b => b.classList.toggle('active', b.dataset.view === view));
+    $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
     write('solar.tab', view);
     scrollTo(0, 0);
   };
-  tabs.forEach(t => t.addEventListener('click', () => show(t.dataset.view)));
+  $$('.tab').forEach(b => b.addEventListener('click', () => show(b.dataset.view)));
   show(read('solar.tab', 'work'));
 
   /* Liste */
@@ -295,17 +421,16 @@
     const c = el('div', 'entry ' + e.dir + (e.done ? ' done' : ''));
     const top = el('div', 'entry-top');
     top.append(el('div', 'person', e.person), el('div', 'total', eur(total(e))));
-    const who = e.dir === 'owe' ? 'Ich schulde ' : 'Schuldet mir ';
     const rows = el('div', 'rows');
     rows.append(
       row(e.fixName || 'Festpreis', eur(e.fixPrice)),
-      row((e.ppName || 'Pro Panel') + ' · ' + e.panels.toLocaleString('de-DE') + ' × ' + eur(e.ppPrice), eur(e.panels * e.ppPrice))
+      row((e.ppName || 'Pro ' + t('unit1')) + ' · ' + e.panels.toLocaleString('de-DE') + ' × ' + eur(e.ppPrice), eur(e.panels * e.ppPrice))
     );
     const actions = el('div', 'actions');
     const done = el('button', '', e.done ? 'Wieder öffnen' : 'Erledigt');
     done.onclick = () => { e.done = !e.done; save(); };
     const edit = el('button', '', 'Bearbeiten');
-    edit.onclick = () => openSheet(e);
+    edit.onclick = () => openEntry(e);
     const del = el('button', 'del', 'Löschen');
     let sure = false;
     del.onclick = () => {
@@ -314,7 +439,7 @@
       setTimeout(() => { sure = false; del.textContent = 'Löschen'; }, 3000);
     };
     actions.append(done, edit, del);
-    c.append(top, el('div', 'dir', who + panelsText(e.panels)), rows, actions);
+    c.append(top, el('div', 'dir', t(e.dir) + ' · ' + panelsText(e.panels)), rows, actions);
     return c;
   }
 
@@ -337,42 +462,51 @@
       if (!xs.length) return;
       const l = el('div', 'list');
       xs.forEach(e => l.append(card(e)));
-      const t = el('div', 'section', title);
-      t.style.marginTop = list.children.length ? '24px' : '0';
-      list.append(t, l);
+      const h = el('div', 'section', title);
+      h.style.marginTop = list.children.length ? '24px' : '0';
+      list.append(h, l);
     };
     group('Offen', open);
     group('Erledigt', closed);
   }
   function save() { write(KEY, entries); render(); }
 
+  /* Sheets */
+  function openSheet(id) {
+    $$('.sheet').forEach(s => s.classList.toggle('open', s.id === id));
+    $(id).scrollTop = 0;
+    document.body.classList.add('sheet-open');
+  }
+  function closeSheet() {
+    $$('.sheet').forEach(s => s.classList.remove('open'));
+    document.body.classList.remove('sheet-open');
+    document.activeElement && document.activeElement.blur();
+  }
+  $('backdrop').onclick = closeSheet;
+
   /* Eingabe */
   const f = { person: $('f-person'), panels: $('f-panels'), fixName: $('f-fixname'), fixPrice: $('f-fixprice'), ppName: $('f-ppname'), ppPrice: $('f-ppprice') };
-  const setDir = d => { dir = d; document.querySelectorAll('#seg button').forEach(b => b.classList.toggle('on', b.dataset.dir === d)); };
-  document.querySelectorAll('#seg button').forEach(b => b.addEventListener('click', () => setDir(b.dataset.dir)));
+  const setDir = d => { dir = d; $$('#seg button').forEach(b => b.classList.toggle('on', b.dataset.dir === d)); };
+  $$('#seg button').forEach(b => b.addEventListener('click', () => setDir(b.dataset.dir)));
   const updateTotal = () => { $('f-total').textContent = eur(num(f.fixPrice.value) + Math.round(num(f.panels.value)) * num(f.ppPrice.value)); };
   Object.values(f).forEach(i => i.addEventListener('input', updateTotal));
 
-  function openSheet(e) {
+  function openEntry(e) {
     editId = e ? e.id : null;
-    const names = read(NAMES_KEY, {});
     $('sheet-title').textContent = e ? 'Eintrag bearbeiten' : 'Neuer Eintrag';
     setDir(e ? e.dir : 'owe');
     f.person.value = e ? e.person : '';
     f.panels.value = e ? e.panels : '';
-    f.fixName.value = e ? e.fixName : (names.fix || '');
-    f.fixPrice.value = fmt(e ? e.fixPrice : 15);
-    f.ppName.value = e ? e.ppName : (names.pp || '');
-    f.ppPrice.value = fmt(e ? e.ppPrice : 3);
+    f.fixName.value = e ? e.fixName : S.fixName;
+    f.fixPrice.value = fmt(e ? e.fixPrice : S.fixPrice);
+    f.ppName.value = e ? e.ppName : S.ppName;
+    f.ppPrice.value = fmt(e ? e.ppPrice : S.ppPrice);
     updateTotal();
-    $('sheet').scrollTop = 0;
-    document.body.classList.add('sheet-open');
+    openSheet('sheet');
   }
-  const closeSheet = () => { document.body.classList.remove('sheet-open'); document.activeElement && document.activeElement.blur(); };
 
-  $('add').onclick = () => openSheet(null);
+  $('add').onclick = () => openEntry(null);
   $('cancel').onclick = closeSheet;
-  $('backdrop').onclick = closeSheet;
   $('sheet').addEventListener('submit', ev => {
     ev.preventDefault();
     const person = f.person.value.trim();
@@ -386,12 +520,11 @@
     const old = entries.find(x => x.id === editId);
     if (old) Object.assign(old, data);
     else entries.unshift({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), done: false, ...data });
-    write(NAMES_KEY, { fix: data.fixName, pp: data.ppName });
     save();
     closeSheet();
   });
 
-  render();
+  apply();
 })();
 </script>
 </body>
