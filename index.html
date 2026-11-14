@@ -353,10 +353,12 @@
   const old = read('solar.buchfuehrung.names', {});
   const DEF = {
     workName: 'Arbeit', workIcon: 'laptop', booksName: 'Buchführung', booksIcon: 'euro',
-    owe: 'Ich schulde', get: 'Mir wird geschuldet', unit1: 'Panel', unitN: 'Panels',
+    owe: 'Ich schulde', get: 'Mir wird geschuldet', unit1: 'Stück', unitN: 'Stück',
     fixName: old.fix || '', fixPrice: 15, ppName: old.pp || '', ppPrice: 3
   };
   let S = { ...DEF, ...read(SET_KEY, {}) };
+  /* Frühere Standard-Einheit, nie selbst geändert: auf die neue umstellen. */
+  if (S.unit1 === 'Panel' && S.unitN === 'Panels') { S.unit1 = DEF.unit1; S.unitN = DEF.unitN; }
   const t = k => String(S[k]).trim() || DEF[k];
   const panelsText = n => n.toLocaleString('de-DE') + ' ' + (n === 1 ? t('unit1') : t('unitN'));
 
