@@ -121,6 +121,33 @@
   .actions button { color: var(--accent); padding: 6px 0; }
   .actions .del { color: var(--red); margin-left: auto; }
 
+  /* Stempelkarte */
+  [hidden] { display: none !important; }
+  .stamp { background: var(--card); border-radius: 16px; padding: 16px; }
+  .stamp-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  .stamp-head b { font-size: 20px; }
+  .stamp-head span { color: var(--muted); font-size: 15px; font-variant-numeric: tabular-nums; }
+  .stamps { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 16px 0; }
+  .stamps div {
+    aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center;
+    border: 2px dashed var(--line); color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums;
+  }
+  .stamps div.on { border: 0; background: var(--accent); color: #fff; }
+  .stamps svg { width: 55%; height: 55%; }
+  .stamp-info { margin: 0 0 16px; color: var(--muted); font-size: 15px; }
+  .stamp-actions { display: grid; gap: 8px; }
+  .primary, .secondary { width: 100%; min-height: 50px; border-radius: 14px; font-weight: 600; padding: 0 16px; }
+  .primary { background: var(--accent); color: #fff; }
+  .secondary { background: var(--field); color: var(--accent); }
+  .link { color: var(--accent); font-size: 15px; padding: 8px; justify-self: center; }
+  .timer { border-top: .5px solid var(--line); padding-top: 14px; margin-bottom: 10px; text-align: center; }
+  .timer-label { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .02em; }
+  .time { font-size: 52px; line-height: 1.15; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .timer.over .time { color: var(--red); }
+  .bar { height: 6px; border-radius: 3px; background: var(--field); overflow: hidden; margin-top: 8px; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 3px; }
+  .timer.over .bar i { background: var(--red); }
+
   /* Tab-Leiste */
   .tabbar {
     position: fixed; left: 50%; transform: translateX(-50%);
@@ -200,11 +227,22 @@
     <h1 data-t="workName"></h1>
     <div class="head-btns"><button class="gear" aria-label="Einstellungen"></button></div>
   </div>
-  <div class="empty">
-    <svg id="work-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></svg>
-    <b>Kommt als Nächstes</b>
-    Dieser Bereich wird im nächsten Schritt gebaut.
-  </div>
+  <section class="stamp">
+    <div class="stamp-head"><b>MacPunkte</b><span id="mac-count"></span></div>
+    <div class="stamps" id="mac-stamps"></div>
+    <div class="timer" id="mac-timer" hidden>
+      <div class="timer-label">MacBook ausgeliehen</div>
+      <div class="time" id="mac-time"></div>
+      <div class="bar"><i id="mac-bar"></i></div>
+    </div>
+    <p class="stamp-info" id="mac-info"></p>
+    <div class="stamp-actions">
+      <button class="primary" id="mac-loan" hidden>MacBook für 24 Stunden ausleihen</button>
+      <button class="primary" id="mac-add">Stempel hinzufügen</button>
+      <button class="secondary" id="mac-return" hidden>MacBook zurückgegeben</button>
+      <button class="link" id="mac-undo">Letzten Stempel entfernen</button>
+    </div>
+  </section>
 </main>
 
 <main id="view-books" class="view">
@@ -374,7 +412,6 @@
       s.textContent = t(v + 'Name');
       b.append(s);
     });
-    $('work-icon').innerHTML = ICONS[S.workIcon] || ICONS.laptop;
     $$('.l-price').forEach(n => { n.textContent = 'Preis pro ' + t('unit1'); });
     $$('.icons').forEach(g => g.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.name === S[g.dataset.icon])));
     document.title = t('workName') + ' · ' + t('booksName');
@@ -405,6 +442,65 @@
     setTimeout(() => { sureReset = false; $('reset').textContent = 'Alles auf Standard zurücksetzen'; }, 3000);
   };
   $('settings').addEventListener('submit', ev => { ev.preventDefault(); closeSheet(); });
+
+  /* Stempelkarte MacPunkte */
+  const MAC_KEY = 'solar.macpunkte.v1', GOAL = 5, LOAN_MS = 24 * 60 * 60 * 1000;
+  let M = { stamps: 0, until: null, ...read(MAC_KEY, {}) };
+  const two = n => String(n).padStart(2, '0');
+  let sureReturn = false;
+
+  function tickMac() {
+    if (!M.until) return;
+    const left = Math.max(0, M.until - Date.now());
+    const sec = Math.ceil(left / 1000);
+    $('mac-time').textContent = two(Math.floor(sec / 3600)) + ':' + two(Math.floor(sec / 60) % 60) + ':' + two(sec % 60);
+    $('mac-bar').style.width = (100 - left / LOAN_MS * 100) + '%';
+    const over = left === 0;
+    if (over !== $('mac-timer').classList.contains('over')) renderMac();
+  }
+
+  function renderMac() {
+    const loan = !!M.until, over = loan && Date.now() >= M.until, full = M.stamps >= GOAL;
+    $('mac-count').textContent = M.stamps + ' von ' + GOAL;
+    const box = $('mac-stamps');
+    box.replaceChildren();
+    for (let i = 1; i <= GOAL; i++) {
+      const d = document.createElement('div');
+      if (i <= M.stamps) { d.className = 'on'; d.innerHTML = svg(ICONS.laptop, 2); } else d.textContent = i;
+      box.append(d);
+    }
+    $('mac-timer').hidden = !loan;
+    $('mac-timer').classList.toggle('over', over);
+    let info;
+    if (over) info = 'Die 24 Stunden sind um. Bitte gib das MacBook zurück.';
+    else if (loan) info = 'Rückgabe bis ' + new Date(M.until).toLocaleString('de-DE', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) + ' Uhr.';
+    else if (full) info = 'Karte voll. Du darfst das MacBook jetzt für 24 Stunden ausleihen.';
+    else info = 'Noch ' + (GOAL - M.stamps) + ' Stempel, dann darfst du das MacBook für 24 Stunden ausleihen.';
+    if (loan && full) info += ' Deine Karte ist schon wieder voll – nach der Rückgabe kannst du erneut ausleihen.';
+    $('mac-info').textContent = info;
+    $('mac-loan').hidden = !full || loan;
+    $('mac-add').hidden = full;
+    $('mac-return').hidden = !loan;
+    $('mac-return').textContent = sureReturn ? 'Wirklich schon zurückgegeben?' : 'MacBook zurückgegeben';
+    $('mac-undo').hidden = M.stamps === 0;
+    tickMac();
+  }
+  const saveMac = () => { write(MAC_KEY, M); renderMac(); };
+  $('mac-add').onclick = () => { if (M.stamps < GOAL) { M.stamps++; saveMac(); } };
+  $('mac-undo').onclick = () => { if (M.stamps > 0) { M.stamps--; saveMac(); } };
+  $('mac-loan').onclick = () => { if (M.stamps >= GOAL && !M.until) { M.stamps = 0; M.until = Date.now() + LOAN_MS; saveMac(); } };
+  $('mac-return').onclick = () => {
+    /* Vor Ablauf der Zeit zweimal tippen, damit der Timer nicht versehentlich endet. */
+    if (Date.now() < M.until && !sureReturn) {
+      sureReturn = true; renderMac();
+      setTimeout(() => { sureReturn = false; renderMac(); }, 3000);
+      return;
+    }
+    sureReturn = false; M.until = null; saveMac();
+  };
+  setInterval(tickMac, 1000);
+  document.addEventListener('visibilitychange', tickMac);
+  renderMac();
 
   /* Tabs */
   const show = view => {
