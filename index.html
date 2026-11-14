@@ -255,20 +255,19 @@
 
   <div class="group">
     <div class="field"><label for="f-person">Person</label><input id="f-person" placeholder="Name" enterkeyhint="next"></div>
+  </div>
+
+  <div class="group">
+    <div class="field"><input class="name" id="f-fixname" placeholder="Eigener Name" aria-label="Name der ersten Position"></div>
+    <div class="field"><label for="f-fixqty" data-t="unitN"></label><input id="f-fixqty" inputmode="numeric" placeholder="0"></div>
+    <div class="field"><label for="f-fixprice" class="l-price"></label><input id="f-fixprice" inputmode="decimal" placeholder="0"><span class="unit">€</span></div>
+  </div>
+
+  <div class="group">
+    <div class="field"><input class="name" id="f-ppname" placeholder="Eigener Name" aria-label="Name der zweiten Position"></div>
     <div class="field"><label for="f-panels" data-t="unitN"></label><input id="f-panels" inputmode="numeric" placeholder="0"></div>
+    <div class="field"><label for="f-ppprice" class="l-price"></label><input id="f-ppprice" inputmode="decimal" placeholder="0"><span class="unit">€</span></div>
   </div>
-
-  <div class="group">
-    <div class="field"><input class="name" id="f-fixname" placeholder="Eigener Name" aria-label="Name der Position mit Festpreis"></div>
-    <div class="field"><label for="f-fixprice">Preis</label><input id="f-fixprice" inputmode="decimal" placeholder="0"><span class="unit">€</span></div>
-  </div>
-  <div class="hint">Festpreis, einmal pro Eintrag.</div>
-
-  <div class="group">
-    <div class="field"><input class="name" id="f-ppname" placeholder="Eigener Name" aria-label="Name der Position mit Preis pro Stück"></div>
-    <div class="field"><label for="f-ppprice" id="l-ppprice"></label><input id="f-ppprice" inputmode="decimal" placeholder="0"><span class="unit">€</span></div>
-  </div>
-  <div class="hint" id="h-pp"></div>
 
   <div class="sheet-total"><span>Gesamt</span><span id="f-total"></span></div>
 </form>
@@ -302,10 +301,10 @@
 
   <div class="section">Vorgaben für neue Einträge</div>
   <div class="group">
-    <div class="field"><label for="s-fixName">Name Festpreis</label><input id="s-fixName" data-s="fixName" placeholder="Eigener Name"></div>
-    <div class="field"><label for="s-fixPrice">Preis</label><input id="s-fixPrice" data-s="fixPrice" inputmode="decimal"><span class="unit">€</span></div>
-    <div class="field"><label for="s-ppName">Name Stückpreis</label><input id="s-ppName" data-s="ppName" placeholder="Eigener Name"></div>
-    <div class="field"><label for="s-ppPrice">Preis pro Stück</label><input id="s-ppPrice" data-s="ppPrice" inputmode="decimal"><span class="unit">€</span></div>
+    <div class="field"><label for="s-fixName">Name Position 1</label><input id="s-fixName" data-s="fixName" placeholder="Eigener Name"></div>
+    <div class="field"><label for="s-fixPrice" class="l-price"></label><input id="s-fixPrice" data-s="fixPrice" inputmode="decimal"><span class="unit">€</span></div>
+    <div class="field"><label for="s-ppName">Name Position 2</label><input id="s-ppName" data-s="ppName" placeholder="Eigener Name"></div>
+    <div class="field"><label for="s-ppPrice" class="l-price"></label><input id="s-ppPrice" data-s="ppPrice" inputmode="decimal"><span class="unit">€</span></div>
   </div>
   <div class="hint">Bestehende Einträge behalten ihre Namen und Preise.</div>
 
@@ -321,7 +320,10 @@
   const eur = n => n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
   const num = s => { const n = parseFloat(String(s).replace(/\s/g, '').replace(',', '.')); return isFinite(n) && n > 0 ? n : 0; };
   const fmt = n => String(n).replace('.', ',');
-  const total = e => e.fixPrice + e.panels * e.ppPrice;
+  /* Alte Einträge ohne fixQty hatten einen einmaligen Festpreis. */
+  const q1 = e => e.fixQty == null ? 1 : e.fixQty;
+  const count = e => (e.fixQty || 0) + e.panels;
+  const total = e => q1(e) * e.fixPrice + e.panels * e.ppPrice;
 
   const read = (k, fallback) => { try { return JSON.parse(localStorage.getItem(k)) || fallback; } catch { return fallback; } };
   const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
@@ -371,8 +373,7 @@
       b.append(s);
     });
     $('work-icon').innerHTML = ICONS[S.workIcon] || ICONS.laptop;
-    $('l-ppprice').textContent = 'Preis pro ' + t('unit1');
-    $('h-pp').textContent = 'Wird mit der Anzahl ' + t('unitN') + ' multipliziert.';
+    $$('.l-price').forEach(n => { n.textContent = 'Preis pro ' + t('unit1'); });
     $$('.icons').forEach(g => g.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.name === S[g.dataset.icon])));
     document.title = t('workName') + ' · ' + t('booksName');
     render();
@@ -423,8 +424,10 @@
     top.append(el('div', 'person', e.person), el('div', 'total', eur(total(e))));
     const rows = el('div', 'rows');
     rows.append(
-      row(e.fixName || 'Festpreis', eur(e.fixPrice)),
-      row((e.ppName || 'Pro ' + t('unit1')) + ' · ' + e.panels.toLocaleString('de-DE') + ' × ' + eur(e.ppPrice), eur(e.panels * e.ppPrice))
+      e.fixQty == null
+        ? row(e.fixName || 'Festpreis', eur(e.fixPrice))
+        : row((e.fixName || 'Position 1') + ' · ' + e.fixQty.toLocaleString('de-DE') + ' × ' + eur(e.fixPrice), eur(e.fixQty * e.fixPrice)),
+      row((e.ppName || 'Position 2') + ' · ' + e.panels.toLocaleString('de-DE') + ' × ' + eur(e.ppPrice), eur(e.panels * e.ppPrice))
     );
     const actions = el('div', 'actions');
     const done = el('button', '', e.done ? 'Wieder öffnen' : 'Erledigt');
@@ -439,7 +442,7 @@
       setTimeout(() => { sure = false; del.textContent = 'Löschen'; }, 3000);
     };
     actions.append(done, edit, del);
-    c.append(top, el('div', 'dir', t(e.dir) + ' · ' + panelsText(e.panels)), rows, actions);
+    c.append(top, el('div', 'dir', t(e.dir) + ' · ' + panelsText(count(e))), rows, actions);
     return c;
   }
 
@@ -448,7 +451,7 @@
     for (const d of ['owe', 'get']) {
       const xs = open.filter(e => e.dir === d);
       $('sum-' + d + '-money').textContent = eur(xs.reduce((s, e) => s + total(e), 0));
-      $('sum-' + d + '-panels').textContent = panelsText(xs.reduce((s, e) => s + e.panels, 0));
+      $('sum-' + d + '-panels').textContent = panelsText(xs.reduce((s, e) => s + count(e), 0));
     }
     const list = $('list');
     list.replaceChildren();
@@ -485,10 +488,10 @@
   $('backdrop').onclick = closeSheet;
 
   /* Eingabe */
-  const f = { person: $('f-person'), panels: $('f-panels'), fixName: $('f-fixname'), fixPrice: $('f-fixprice'), ppName: $('f-ppname'), ppPrice: $('f-ppprice') };
+  const f = { person: $('f-person'), fixQty: $('f-fixqty'), panels: $('f-panels'), fixName: $('f-fixname'), fixPrice: $('f-fixprice'), ppName: $('f-ppname'), ppPrice: $('f-ppprice') };
   const setDir = d => { dir = d; $$('#seg button').forEach(b => b.classList.toggle('on', b.dataset.dir === d)); };
   $$('#seg button').forEach(b => b.addEventListener('click', () => setDir(b.dataset.dir)));
-  const updateTotal = () => { $('f-total').textContent = eur(num(f.fixPrice.value) + Math.round(num(f.panels.value)) * num(f.ppPrice.value)); };
+  const updateTotal = () => { $('f-total').textContent = eur(Math.round(num(f.fixQty.value)) * num(f.fixPrice.value) + Math.round(num(f.panels.value)) * num(f.ppPrice.value)); };
   Object.values(f).forEach(i => i.addEventListener('input', updateTotal));
 
   function openEntry(e) {
@@ -496,6 +499,7 @@
     $('sheet-title').textContent = e ? 'Eintrag bearbeiten' : 'Neuer Eintrag';
     setDir(e ? e.dir : 'owe');
     f.person.value = e ? e.person : '';
+    f.fixQty.value = e ? q1(e) : '';
     f.panels.value = e ? e.panels : '';
     f.fixName.value = e ? e.fixName : S.fixName;
     f.fixPrice.value = fmt(e ? e.fixPrice : S.fixPrice);
@@ -513,7 +517,7 @@
     if (!person) { f.person.focus(); return; }
     const data = {
       person, dir,
-      panels: Math.round(num(f.panels.value)),
+      panels: Math.round(num(f.panels.value)), fixQty: Math.round(num(f.fixQty.value)),
       fixName: f.fixName.value.trim(), fixPrice: num(f.fixPrice.value),
       ppName: f.ppName.value.trim(), ppPrice: num(f.ppPrice.value)
     };
