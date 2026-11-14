@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<title>Solar</title>
+<style>
+  :root {
+    --bg: #f2f2f7;
+    --card: #ffffff;
+    --text: #000000;
+    --muted: #6e6e73;
+    --line: rgba(60, 60, 67, .18);
+    --field: rgba(118, 118, 128, .12);
+    --accent: #007aff;
+    --red: #d70015;
+    --green: #1f8a3b;
+    --bar: rgba(255, 255, 255, .72);
+    --bar-border: rgba(255, 255, 255, .6);
+    --shadow: 0 8px 30px rgba(0, 0, 0, .14);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #000000;
+      --card: #1c1c1e;
+      --text: #ffffff;
+      --muted: #98989f;
+      --line: rgba(84, 84, 88, .6);
+      --field: rgba(118, 118, 128, .24);
+      --accent: #0a84ff;
+      --red: #ff453a;
+      --green: #30d158;
+      --bar: rgba(40, 40, 42, .72);
+      --bar-border: rgba(255, 255, 255, .12);
+      --shadow: 0 8px 30px rgba(0, 0, 0, .5);
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 17px/1.35 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; border: 0; background: none; padding: 0; }
+
+  .view {
+    display: none;
+    max-width: 560px;
+    margin: 0 auto;
+    padding: calc(env(safe-area-inset-top) + 20px) 16px calc(env(safe-area-inset-bottom) + 120px);
+  }
+  .view.active { display: block; }
+  .head { display: flex; align-items: flex-end; justify-content: space-between; margin: 0 4px 16px; }
+  h1 { font-size: 34px; line-height: 1.1; font-weight: 700; letter-spacing: -.02em; margin: 0; }
+  .add {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--accent); color: #fff;
+    display: grid; place-items: center;
+  }
+  .add svg { width: 18px; height: 18px; }
+
+  .empty { text-align: center; color: var(--muted); padding: 64px 24px; }
+  .empty svg { width: 56px; height: 56px; opacity: .5; margin-bottom: 12px; }
+  .empty b { display: block; color: var(--text); font-size: 20px; margin-bottom: 4px; }
+
+  /* Übersicht */
+  .summary { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+  .sum { background: var(--card); border-radius: 16px; padding: 14px 16px; min-width: 0; }
+  .sum .label { font-size: 13px; color: var(--muted); }
+  .sum .money { font-size: 24px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; margin-top: 2px; overflow-wrap: anywhere; }
+  .sum .panels { font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .sum.owe .money { color: var(--red); }
+  .sum.get .money { color: var(--green); }
+
+  .section { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .02em; margin: 0 16px 6px; }
+  .list { display: grid; gap: 12px; }
+  .entry { background: var(--card); border-radius: 16px; padding: 14px 16px; }
+  .entry.done { opacity: .5; }
+  .entry-top { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+  .entry .person { font-weight: 600; overflow-wrap: anywhere; min-width: 0; }
+  .entry .total { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .entry.owe .total { color: var(--red); }
+  .entry.get .total { color: var(--green); }
+  .entry .dir { font-size: 15px; color: var(--muted); margin-top: 2px; }
+  .rows { margin-top: 10px; border-top: .5px solid var(--line); padding-top: 8px; font-size: 15px; display: grid; gap: 4px; }
+  .rows div { display: flex; justify-content: space-between; gap: 12px; }
+  .rows span:first-child { color: var(--muted); overflow-wrap: anywhere; min-width: 0; }
+  .rows span:last-child { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .actions { display: flex; gap: 20px; margin-top: 10px; font-size: 15px; }
+  .actions button { color: var(--accent); padding: 6px 0; }
+  .actions .del { color: var(--red); margin-left: auto; }
+
+  /* Tab-Leiste */
+  .tabbar {
+    position: fixed; left: 50%; transform: translateX(-50%);
+    bottom: calc(env(safe-area-inset-bottom) + 14px);
+    display: flex; gap: 4px; padding: 5px;
+    border-radius: 999px;
+    background: var(--bar);
+    border: .5px solid var(--bar-border);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: blur(24px) saturate(180%);
+    box-shadow: var(--shadow);
+    z-index: 10;
+  }
+  .tab {
+    width: 96px; height: 54px; border-radius: 999px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+    font-size: 10px; font-weight: 600; color: var(--text);
+    transition: background .2s, color .2s;
+  }
+  .tab svg { width: 26px; height: 26px; }
+  .tab.active { background: var(--field); color: var(--accent); }
+
+  /* Eingabe-Sheet */
+  .backdrop {
+    position: fixed; inset: 0; background: rgba(0, 0, 0, .4);
+    opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 20;
+  }
+  .sheet {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 21;
+    max-width: 560px; margin: 0 auto; max-height: 92dvh; overflow-y: auto;
+    background: var(--bg); border-radius: 20px 20px 0 0;
+    padding: 0 16px calc(env(safe-area-inset-bottom) + 20px);
+    transform: translateY(105%); transition: transform .3s cubic-bezier(.2, .8, .2, 1);
+  }
+  body.sheet-open .backdrop { opacity: 1; pointer-events: auto; }
+  body.sheet-open .sheet { transform: none; }
+  .sheet-head {
+    position: sticky; top: 0; background: var(--bg); z-index: 1;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 4px 12px; margin-bottom: 4px;
+  }
+  .sheet-head b { font-size: 17px; }
+  .sheet-head button { color: var(--accent); }
+  .sheet-head .save { font-weight: 600; }
+
+  .seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--field); border-radius: 10px; padding: 2px; margin-bottom: 20px; }
+  .seg button { padding: 7px 4px; border-radius: 8px; font-size: 14px; font-weight: 500; }
+  .seg button.on { background: var(--card); box-shadow: 0 1px 4px rgba(0, 0, 0, .15); font-weight: 600; }
+
+  .group { background: var(--card); border-radius: 12px; margin-bottom: 20px; overflow: hidden; }
+  .field { display: flex; align-items: center; gap: 12px; padding: 0 16px; min-height: 46px; }
+  .field + .field { border-top: .5px solid var(--line); }
+  .field label { flex: none; color: var(--text); }
+  .field input {
+    flex: 1; min-width: 0; border: 0; background: none; outline: none;
+    padding: 11px 0; text-align: right;
+  }
+  .field input.name { text-align: left; font-weight: 600; }
+  .field input::placeholder { color: var(--muted); font-weight: 400; }
+  .field .unit { color: var(--muted); flex: none; }
+  .hint { font-size: 13px; color: var(--muted); margin: -14px 16px 20px; }
+  .sheet-total { display: flex; justify-content: space-between; font-size: 20px; font-weight: 700; margin: 0 16px; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+
+<main id="view-work" class="view active">
+  <div class="head"><h1>Arbeit</h1></div>
+  <div class="empty">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="2"/><path d="M2 19.5h20"/></svg>
+    <b>Kommt als Nächstes</b>
+    Dieser Bereich wird im nächsten Schritt gebaut.
+  </div>
+</main>
+
+<main id="view-books" class="view">
+  <div class="head">
+    <h1>Buchführung</h1>
+    <button class="add" id="add" aria-label="Neuer Eintrag">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+  </div>
+
+  <div class="summary">
+    <div class="sum owe">
+      <div class="label">Ich schulde</div>
+      <div class="money" id="sum-owe-money"></div>
+      <div class="panels" id="sum-owe-panels"></div>
+    </div>
+    <div class="sum get">
+      <div class="label">Mir wird geschuldet</div>
+      <div class="money" id="sum-get-money"></div>
+      <div class="panels" id="sum-get-panels"></div>
+    </div>
+  </div>
+
+  <div id="list"></div>
+</main>
+
+<nav class="tabbar">
+  <button class="tab active" data-view="work" aria-label="Arbeit">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="11" rx="2"/><path d="M2 19.5h20"/></svg>
+    Arbeit
+  </button>
+  <button class="tab" data-view="books" aria-label="Buchführung">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 6.2A7 7 0 1 0 17.5 17.8"/><path d="M4 10h9M4 14h9"/></svg>
+    Buchführung
+  </button>
+</nav>
+
+<div class="backdrop" id="backdrop"></div>
+<form class="sheet" id="sheet" autocomplete="off" novalidate>
+  <div class="sheet-head">
+    <button type="button" id="cancel">Abbrechen</button>
+    <b id="sheet-title">Neuer Eintrag</b>
+    <button type="submit" class="save">Sichern</button>
+  </div>
+
+  <div class="seg" id="seg">
+    <button type="button" data-dir="owe">Ich schulde</button>
+    <button type="button" data-dir="get">Mir wird geschuldet</button>
+  </div>
+
+  <div class="group">
+    <div class="field"><label for="f-person">Person</label><input id="f-person" placeholder="Name" enterkeyhint="next"></div>
+    <div class="field"><label for="f-panels">Panels</label><input id="f-panels" inputmode="numeric" placeholder="0"></div>
+  </div>
+
+  <div class="group">
+    <div class="field"><input class="name" id="f-fixname" placeholder="Eigener Name" aria-label="Name der Position mit Festpreis"></div>
+    <div class="field"><label for="f-fixprice">Preis</label><input id="f-fixprice" inputmode="decimal" placeholder="0"><span class="unit">€</span></div>
+  </div>
+  <div class="hint">Festpreis, einmal pro Eintrag.</div>
+
+  <div class="group">
+    <div class="field"><input class="name" id="f-ppname" placeholder="Eigener Name" aria-label="Name der Position mit Preis pro Panel"></div>
+    <div class="field"><label for="f-ppprice">Preis pro Panel</label><input id="f-ppprice" inputmode="decimal" placeholder="0"><span class="unit">€</span></div>
+  </div>
+  <div class="hint">Wird mit der Anzahl der Panels multipliziert.</div>
+
+  <div class="sheet-total"><span>Gesamt</span><span id="f-total"></span></div>
+</form>
+
+<script>
+(() => {
+  const KEY = 'solar.buchfuehrung.v1';
+  const NAMES_KEY = 'solar.buchfuehrung.names';
+  const $ = id => document.getElementById(id);
+  const eur = n => n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+  const num = s => { const n = parseFloat(String(s).replace(/\s/g, '').replace(',', '.')); return isFinite(n) && n > 0 ? n : 0; };
+  const fmt = n => String(n).replace('.', ',');
+  const panelsText = n => n.toLocaleString('de-DE') + (n === 1 ? ' Panel' : ' Panels');
+  const total = e => e.fixPrice + e.panels * e.ppPrice;
+
+  const read = (k, fallback) => { try { return JSON.parse(localStorage.getItem(k)) || fallback; } catch { return fallback; } };
+  const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+  let entries = read(KEY, []);
+  let editId = null, dir = 'owe';
+
+  /* Tabs */
+  const tabs = document.querySelectorAll('.tab');
+  const show = view => {
+    tabs.forEach(t => t.classList.toggle('active', t.dataset.view === view));
+    document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + view));
+    write('solar.tab', view);
+    scrollTo(0, 0);
+  };
+  tabs.forEach(t => t.addEventListener('click', () => show(t.dataset.view)));
+  show(read('solar.tab', 'work'));
+
+  /* Liste */
+  const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+  const row = (a, b) => { const d = el('div'); d.append(el('span', '', a), el('span', '', b)); return d; };
+
+  function card(e) {
+    const c = el('div', 'entry ' + e.dir + (e.done ? ' done' : ''));
+    const top = el('div', 'entry-top');
+    top.append(el('div', 'person', e.person), el('div', 'total', eur(total(e))));
+    const who = e.dir === 'owe' ? 'Ich schulde ' : 'Schuldet mir ';
+    const rows = el('div', 'rows');
+    rows.append(
+      row(e.fixName || 'Festpreis', eur(e.fixPrice)),
+      row((e.ppName || 'Pro Panel') + ' · ' + e.panels.toLocaleString('de-DE') + ' × ' + eur(e.ppPrice), eur(e.panels * e.ppPrice))
+    );
+    const actions = el('div', 'actions');
+    const done = el('button', '', e.done ? 'Wieder öffnen' : 'Erledigt');
+    done.onclick = () => { e.done = !e.done; save(); };
+    const edit = el('button', '', 'Bearbeiten');
+    edit.onclick = () => openSheet(e);
+    const del = el('button', 'del', 'Löschen');
+    del.onclick = () => { if (confirm('Eintrag „' + e.person + '“ löschen?')) { entries = entries.filter(x => x !== e); save(); } };
+    actions.append(done, edit, del);
+    c.append(top, el('div', 'dir', who + panelsText(e.panels)), rows, actions);
+    return c;
+  }
+
+  function render() {
+    const open = entries.filter(e => !e.done), closed = entries.filter(e => e.done);
+    for (const d of ['owe', 'get']) {
+      const xs = open.filter(e => e.dir === d);
+      $('sum-' + d + '-money').textContent = eur(xs.reduce((s, e) => s + total(e), 0));
+      $('sum-' + d + '-panels').textContent = panelsText(xs.reduce((s, e) => s + e.panels, 0));
+    }
+    const list = $('list');
+    list.replaceChildren();
+    if (!entries.length) {
+      const empty = el('div', 'empty');
+      empty.append(el('b', '', 'Noch keine Einträge'), 'Tippe oben auf +, um den ersten Eintrag anzulegen.');
+      list.append(empty);
+      return;
+    }
+    const group = (title, xs) => {
+      if (!xs.length) return;
+      const l = el('div', 'list');
+      xs.forEach(e => l.append(card(e)));
+      const t = el('div', 'section', title);
+      t.style.marginTop = list.children.length ? '24px' : '0';
+      list.append(t, l);
+    };
+    group('Offen', open);
+    group('Erledigt', closed);
+  }
+  function save() { write(KEY, entries); render(); }
+
+  /* Eingabe */
+  const f = { person: $('f-person'), panels: $('f-panels'), fixName: $('f-fixname'), fixPrice: $('f-fixprice'), ppName: $('f-ppname'), ppPrice: $('f-ppprice') };
+  const setDir = d => { dir = d; document.querySelectorAll('#seg button').forEach(b => b.classList.toggle('on', b.dataset.dir === d)); };
+  document.querySelectorAll('#seg button').forEach(b => b.addEventListener('click', () => setDir(b.dataset.dir)));
+  const updateTotal = () => { $('f-total').textContent = eur(num(f.fixPrice.value) + Math.round(num(f.panels.value)) * num(f.ppPrice.value)); };
+  Object.values(f).forEach(i => i.addEventListener('input', updateTotal));
+
+  function openSheet(e) {
+    editId = e ? e.id : null;
+    const names = read(NAMES_KEY, {});
+    $('sheet-title').textContent = e ? 'Eintrag bearbeiten' : 'Neuer Eintrag';
+    setDir(e ? e.dir : 'owe');
+    f.person.value = e ? e.person : '';
+    f.panels.value = e ? e.panels : '';
+    f.fixName.value = e ? e.fixName : (names.fix || '');
+    f.fixPrice.value = fmt(e ? e.fixPrice : 15);
+    f.ppName.value = e ? e.ppName : (names.pp || '');
+    f.ppPrice.value = fmt(e ? e.ppPrice : 3);
+    updateTotal();
+    $('sheet').scrollTop = 0;
+    document.body.classList.add('sheet-open');
+  }
+  const closeSheet = () => { document.body.classList.remove('sheet-open'); document.activeElement && document.activeElement.blur(); };
+
+  $('add').onclick = () => openSheet(null);
+  $('cancel').onclick = closeSheet;
+  $('backdrop').onclick = closeSheet;
+  $('sheet').addEventListener('submit', ev => {
+    ev.preventDefault();
+    const person = f.person.value.trim();
+    if (!person) { f.person.focus(); return; }
+    const data = {
+      person, dir,
+      panels: Math.round(num(f.panels.value)),
+      fixName: f.fixName.value.trim(), fixPrice: num(f.fixPrice.value),
+      ppName: f.ppName.value.trim(), ppPrice: num(f.ppPrice.value)
+    };
+    const old = entries.find(x => x.id === editId);
+    if (old) Object.assign(old, data);
+    else entries.unshift({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), done: false, ...data });
+    write(NAMES_KEY, { fix: data.fixName, pp: data.ppName });
+    save();
+    closeSheet();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
